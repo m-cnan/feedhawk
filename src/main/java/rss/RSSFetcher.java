@@ -19,8 +19,17 @@ public class RSSFetcher {
 
             XmlReader reader;
 
-            // Check if it's a local file
-            if (feedUrl.startsWith("file://") || new File(feedUrl).exists()) {
+            // Check if it's a resource file (no protocol and no path separators)
+            if (!feedUrl.startsWith("http") && !feedUrl.startsWith("file://") && !feedUrl.contains("/")) {
+                System.out.println("Reading resource file...");
+                InputStream inputStream = RSSFetcher.class.getClassLoader().getResourceAsStream(feedUrl);
+                if (inputStream == null) {
+                    throw new RuntimeException("Resource not found: " + feedUrl);
+                }
+                reader = new XmlReader(inputStream);
+            }
+            // Check if it's a local file path
+            else if (feedUrl.startsWith("file://") || new File(feedUrl).exists()) {
                 System.out.println("Reading local file...");
                 InputStream inputStream = new FileInputStream(feedUrl);
                 reader = new XmlReader(inputStream);

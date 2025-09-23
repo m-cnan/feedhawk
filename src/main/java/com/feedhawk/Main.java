@@ -9,7 +9,7 @@ public class Main {
 
         // First test with local file to verify Rome library works
         System.out.println("Step 1: Testing with local RSS file...");
-        String localFeed = "src/main/resources/test-feed.xml";
+        String localFeed = "test-feed.xml"; // Resource path, not file path
         RSSFetcher.fetchAndPrint(localFeed);
 
         System.out.println("\n" + "=".repeat(50) + "\n");
