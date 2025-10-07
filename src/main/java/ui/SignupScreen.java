@@ -4,13 +4,12 @@ import auth.AuthController;
 import auth.AuthController.AuthResult;
 import utils.Constants;
 import utils.Validator;
+import utils.ThemeManager;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 
 public class SignupScreen extends JFrame {
     private final AuthController authController;
@@ -28,161 +27,149 @@ public class SignupScreen extends JFrame {
         initializeComponents();
         setupLayout();
         setupEventListeners();
+        
+        getContentPane().setBackground(ThemeManager.getBackgroundColor());
+        ThemeManager.applyThemeToWindow(this);
+        
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle(Constants.APP_NAME + " - Sign Up");
-        setSize(450, 400);
+        setSize(550, 550);
         setLocationRelativeTo(null);
         setResizable(false);
     }
 
     private void initializeComponents() {
-        // Create components
-        usernameField = new JTextField(20);
-        emailField = new JTextField(20);
-        passwordField = new JPasswordField(20);
-        confirmPasswordField = new JPasswordField(20);
-        signupButton = new JButton("Create Account");
-        backToLoginButton = new JButton("Back to Login");
+        usernameField = new JTextField(25);
+        emailField = new JTextField(25);
+        passwordField = new JPasswordField(25);
+        confirmPasswordField = new JPasswordField(25);
+        signupButton = ThemeManager.createAccentButton("✨ Create Account");
+        backToLoginButton = ThemeManager.createThemedButton("← Back to Login");
         statusLabel = new JLabel(" ");
         passwordStrengthLabel = new JLabel(" ");
 
-        // Set component properties
+        ThemeManager.applyTheme(usernameField);
+        ThemeManager.applyTheme(emailField);
+        ThemeManager.applyTheme(passwordField);
+        ThemeManager.applyTheme(confirmPasswordField);
+
         usernameField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         emailField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         passwordField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         confirmPasswordField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        signupButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        signupButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
         backToLoginButton.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
 
-        statusLabel.setForeground(Color.RED);
+        statusLabel.setForeground(ThemeManager.getAccentColor());
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         passwordStrengthLabel.setHorizontalAlignment(SwingConstants.CENTER);
         passwordStrengthLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 12));
-
-        // Set button colors
-        signupButton.setBackground(new Color(40, 167, 69));
-        signupButton.setForeground(Color.WHITE);
-        signupButton.setFocusPainted(false);
-
-        backToLoginButton.setBackground(new Color(108, 117, 125));
-        backToLoginButton.setForeground(Color.WHITE);
-        backToLoginButton.setFocusPainted(false);
+        passwordStrengthLabel.setForeground(ThemeManager.getTextSecondaryColor());
     }
 
     private void setupLayout() {
         setLayout(new BorderLayout());
 
-        // Header panel
-        JPanel headerPanel = new JPanel();
-        headerPanel.setBackground(new Color(248, 249, 250));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
-        JLabel titleLabel = new JLabel("Create Your " + Constants.APP_NAME + " Account");
-        titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        JPanel headerPanel = ThemeManager.createThemedPanel();
+        headerPanel.setBorder(new EmptyBorder(30, 20, 20, 20));
+        
+        JLabel titleLabel = new JLabel("Create Your Account");
+        titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
+        titleLabel.setForeground(ThemeManager.getAccentColor());
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        JLabel subtitleLabel = new JLabel("Join " + Constants.APP_NAME + " today");
+        subtitleLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        subtitleLabel.setForeground(ThemeManager.getTextSecondaryColor());
+        subtitleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         headerPanel.add(titleLabel);
+        headerPanel.add(Box.createVerticalStrut(5));
+        headerPanel.add(subtitleLabel);
 
-        // Main panel
-        JPanel mainPanel = new JPanel(new GridBagLayout());
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+        JPanel mainPanel = ThemeManager.createThemedPanel();
+        mainPanel.setBorder(new EmptyBorder(20, 50, 30, 50));
+        mainPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 0, 8, 0);
 
-        // Username
         gbc.gridx = 0; gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 0, 5, 0);
-        mainPanel.add(new JLabel("Username:"), gbc);
+        JLabel usernameLabel = new JLabel("Username");
+        usernameLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        usernameLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        mainPanel.add(usernameLabel, gbc);
 
         gbc.gridy = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         mainPanel.add(usernameField, gbc);
 
-        // Email
         gbc.gridy = 2;
-        gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        mainPanel.add(new JLabel("Email:"), gbc);
+        JLabel emailLabel = new JLabel("Email");
+        emailLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        emailLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        mainPanel.add(emailLabel, gbc);
 
         gbc.gridy = 3;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         mainPanel.add(emailField, gbc);
 
-        // Password
         gbc.gridy = 4;
-        gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        mainPanel.add(new JLabel("Password:"), gbc);
+        JLabel passwordLabel = new JLabel("Password");
+        passwordLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        passwordLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        mainPanel.add(passwordLabel, gbc);
 
         gbc.gridy = 5;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         mainPanel.add(passwordField, gbc);
 
-        // Password strength indicator
         gbc.gridy = 6;
-        gbc.insets = new Insets(0, 0, 5, 0);
         mainPanel.add(passwordStrengthLabel, gbc);
 
-        // Confirm Password
         gbc.gridy = 7;
-        gbc.fill = GridBagConstraints.NONE;
         gbc.weightx = 0;
-        gbc.insets = new Insets(5, 0, 5, 0);
-        mainPanel.add(new JLabel("Confirm Password:"), gbc);
+        JLabel confirmPasswordLabel = new JLabel("Confirm Password");
+        confirmPasswordLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        confirmPasswordLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        mainPanel.add(confirmPasswordLabel, gbc);
 
         gbc.gridy = 8;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
         mainPanel.add(confirmPasswordField, gbc);
 
-        // Status label
         gbc.gridy = 9;
-        gbc.insets = new Insets(10, 0, 10, 0);
+        gbc.insets = new Insets(15, 0, 15, 0);
         mainPanel.add(statusLabel, gbc);
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.add(signupButton);
-        buttonPanel.add(backToLoginButton);
-
         gbc.gridy = 10;
-        mainPanel.add(buttonPanel, gbc);
+        gbc.insets = new Insets(5, 0, 5, 0);
+        mainPanel.add(signupButton, gbc);
+
+        gbc.gridy = 11;
+        mainPanel.add(backToLoginButton, gbc);
 
         add(headerPanel, BorderLayout.NORTH);
         add(mainPanel, BorderLayout.CENTER);
     }
 
     private void setupEventListeners() {
-        signupButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                performSignup();
-            }
-        });
-
-        backToLoginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                backToLogin();
-            }
-        });
-
-        // Password strength indicator
+        signupButton.addActionListener(e -> performSignup());
+        backToLoginButton.addActionListener(e -> backToLogin());
+        
         passwordField.addKeyListener(new KeyAdapter() {
-            @Override
             public void keyReleased(KeyEvent e) {
                 updatePasswordStrength();
             }
         });
-
-        // Enter key support
-        confirmPasswordField.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                performSignup();
-            }
-        });
+        
+        confirmPasswordField.addActionListener(e -> performSignup());
     }
 
     private void updatePasswordStrength() {
@@ -193,19 +180,19 @@ public class SignupScreen extends JFrame {
 
         switch (strength) {
             case "Very Weak":
-                passwordStrengthLabel.setForeground(Color.RED);
+                passwordStrengthLabel.setForeground(new Color(220, 53, 69));
                 break;
             case "Weak":
-                passwordStrengthLabel.setForeground(new Color(255, 140, 0));
+                passwordStrengthLabel.setForeground(ThemeManager.getAccentColor());
                 break;
             case "Fair":
-                passwordStrengthLabel.setForeground(new Color(255, 215, 0));
+                passwordStrengthLabel.setForeground(new Color(255, 193, 7));
                 break;
             case "Good":
-                passwordStrengthLabel.setForeground(new Color(173, 255, 47));
+                passwordStrengthLabel.setForeground(new Color(40, 167, 69));
                 break;
             case "Strong":
-                passwordStrengthLabel.setForeground(new Color(0, 128, 0));
+                passwordStrengthLabel.setForeground(new Color(25, 135, 84));
                 break;
         }
     }
@@ -216,7 +203,6 @@ public class SignupScreen extends JFrame {
         String password = new String(passwordField.getPassword());
         String confirmPassword = new String(confirmPasswordField.getPassword());
 
-        // Basic validation
         if (username.isEmpty()) {
             showError("Please enter a username");
             usernameField.requestFocus();
@@ -241,26 +227,21 @@ public class SignupScreen extends JFrame {
             return;
         }
 
-        // Show loading state
         signupButton.setEnabled(false);
-        signupButton.setText("Creating Account...");
+        signupButton.setText("Creating...");
         statusLabel.setText("Creating your account...");
-        statusLabel.setForeground(Color.BLUE);
+        statusLabel.setForeground(ThemeManager.getTextSecondaryColor());
 
-        // Perform signup in background thread
         SwingWorker<AuthResult, Void> worker = new SwingWorker<AuthResult, Void>() {
-            @Override
             protected AuthResult doInBackground() throws Exception {
                 return authController.registerUser(username, email, password, confirmPassword);
             }
 
-            @Override
             protected void done() {
                 try {
                     AuthResult result = get();
                     if (result.isSuccess()) {
                         showSuccess("Account created successfully! Please log in.");
-                        // Clear form and go back to login after delay
                         Timer timer = new Timer(2000, e -> backToLogin());
                         timer.setRepeats(false);
                         timer.start();
@@ -271,7 +252,7 @@ public class SignupScreen extends JFrame {
                     showError("Signup failed: " + e.getMessage());
                 } finally {
                     signupButton.setEnabled(true);
-                    signupButton.setText("Create Account");
+                    signupButton.setText("✨ Create Account");
                 }
             }
         };
@@ -287,7 +268,7 @@ public class SignupScreen extends JFrame {
 
     private void showError(String message) {
         statusLabel.setText(message);
-        statusLabel.setForeground(Color.RED);
+        statusLabel.setForeground(new Color(220, 53, 69));
     }
 
     private void showSuccess(String message) {

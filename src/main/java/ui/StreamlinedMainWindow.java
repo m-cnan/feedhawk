@@ -6,11 +6,15 @@ import db.models.Article;
 import db.models.Feed;
 import db.FeedDAO;
 import rss.FeedParser;
+import rss.RSSSearchService;
 import utils.Constants;
+import utils.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +33,7 @@ public class StreamlinedMainWindow extends JFrame {
     private JButton discoverButton;
     private JButton settingsButton;
     private JButton logoutButton;
+    private JButton themeToggleButton;
     private JLabel statusLabel;
     private JLabel userLabel;
     private JComboBox<String> viewModeComboBox;
@@ -37,8 +42,8 @@ public class StreamlinedMainWindow extends JFrame {
     private List<Article> currentArticles;
     private User currentUser;
     private String selectedList = Constants.DEFAULT_LIST_HOME;
-    private String currentViewMode = Constants.VIEW_MODE_LIST;
-    
+    private String currentViewMode = Constants.VIEW_MODE_MAGAZINE; // Default to magazine view
+
     public StreamlinedMainWindow() {
         this.authController = AuthController.getInstance();
         this.feedParser = new FeedParser();
@@ -46,6 +51,9 @@ public class StreamlinedMainWindow extends JFrame {
         this.currentUser = authController.getCurrentUser();
         this.currentArticles = new ArrayList<>();
         
+        // Apply dark theme first
+        applyTheme();
+
         initializeComponents();
         setupLayout();
         setupEventHandlers();
@@ -55,91 +63,92 @@ public class StreamlinedMainWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT);
         setLocationRelativeTo(null);
-        
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            SwingUtilities.updateComponentTreeUI(this);
-        } catch (Exception e) {
-            System.err.println("Could not set look and feel: " + e.getMessage());
-        }
+    }
+
+    private void applyTheme() {
+        // Set the frame background
+        getContentPane().setBackground(ThemeManager.getBackgroundColor());
     }
     
     private void initializeComponents() {
         // Side panel for user lists and controls
-        sidePanel = new JPanel(new BorderLayout());
+        sidePanel = ThemeManager.createThemedPanel();
         sidePanel.setPreferredSize(new Dimension(Constants.SIDEBAR_WIDTH, 0));
-        sidePanel.setBackground(new Color(248, 249, 250));
         sidePanel.setBorder(new EmptyBorder(15, 15, 15, 15));
-        
+        sidePanel.setBackground(ThemeManager.getSurfaceColor());
+
         // User info
         String displayName = currentUser != null ? currentUser.getUsername() : "Guest";
         userLabel = new JLabel("👤 " + displayName);
         userLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        userLabel.setForeground(ThemeManager.getTextPrimaryColor());
         userLabel.setBorder(new EmptyBorder(0, 0, 15, 0));
         
-        // User Lists (simplified - no category confusion)
+        // User Lists - Only Home and Saved (removed bookmark/read later)
         userListsModel = new DefaultListModel<>();
         userListsModel.addElement("🏠 " + Constants.DEFAULT_LIST_HOME);
         userListsModel.addElement("💾 " + Constants.DEFAULT_LIST_SAVED);
-        
+
         userListsList = new JList<>(userListsModel);
         userListsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         userListsList.setSelectedIndex(0);
         userListsList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        userListsList.setBackground(ThemeManager.getCardColor());
+        userListsList.setForeground(ThemeManager.getTextPrimaryColor());
         userListsList.setCellRenderer(new CustomListCellRenderer());
         
-        // View mode selector
-        viewModeComboBox = new JComboBox<>(new String[]{"📋 List View", "📖 Magazine View", "📱 Reel View"});
+        // View mode selector - Only Magazine and Reel views
+        viewModeComboBox = new JComboBox<>(new String[]{"📖 Magazine View", "📱 Reel View"});
         viewModeComboBox.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        ThemeManager.applyTheme(viewModeComboBox);
+
+        // Control buttons with proper theming
+        refreshButton = ThemeManager.createThemedButton("🔄 Refresh");
+        refreshButton.setFocusable(true);
+        refreshButton.setEnabled(true);
         
-        // Control buttons
-        refreshButton = new JButton("🔄 Refresh");
-        discoverButton = new JButton("🔍 Discover Feeds");
-        settingsButton = new JButton("⚙️ Settings");
-        logoutButton = new JButton("🚪 Logout");
+        discoverButton = ThemeManager.createAccentButton("🔍 Discover Feeds");
+        discoverButton.setFocusable(true);
+        discoverButton.setEnabled(true);
         
-        styleButton(refreshButton);
-        styleButton(discoverButton);
-        styleButton(settingsButton);
-        styleButton(logoutButton);
+        JButton createListButton = ThemeManager.createThemedButton("➕ Create New List");
+        createListButton.setFocusable(true);
+        createListButton.setEnabled(true);
         
-        // Main feed panel
+        settingsButton = ThemeManager.createThemedButton("⚙️ Settings");
+        settingsButton.setFocusable(true);
+        settingsButton.setEnabled(true);
+        
+        themeToggleButton = ThemeManager.createThemedButton(ThemeManager.isDarkMode() ? "☀️ Light Mode" : "🌙 Dark Mode");
+        themeToggleButton.setFocusable(true);
+        themeToggleButton.setEnabled(true);
+        
+        logoutButton = ThemeManager.createThemedButton("🚪 Logout");
+        logoutButton.setFocusable(true);
+        logoutButton.setEnabled(true);
+
+        // Main feed panel with proper dark theme
         feedPanel = new JPanel();
         feedPanel.setLayout(new BoxLayout(feedPanel, BoxLayout.Y_AXIS));
-        feedPanel.setBackground(Color.WHITE);
-        
+        feedPanel.setBackground(ThemeManager.getBackgroundColor());
+
         feedScrollPane = new JScrollPane(feedPanel);
         feedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         feedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         feedScrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
-        // Status bar
+        feedScrollPane.setBackground(ThemeManager.getBackgroundColor());
+        feedScrollPane.getViewport().setBackground(ThemeManager.getBackgroundColor());
+
+        // Status bar with proper theming
         statusLabel = new JLabel("Welcome to " + Constants.APP_NAME + "!");
         statusLabel.setBorder(new EmptyBorder(8, 15, 8, 15));
         statusLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        statusLabel.setForeground(Color.GRAY);
-    }
-    
-    private void styleButton(JButton button) {
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
-        button.setFocusPainted(false);
-        button.setBackground(Color.WHITE);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(206, 212, 218)),
-            new EmptyBorder(8, 12, 8, 12)
-        ));
-        
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(new Color(248, 249, 250));
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(Color.WHITE);
-            }
-        });
+        statusLabel.setForeground(ThemeManager.getTextSecondaryColor());
+        statusLabel.setBackground(ThemeManager.getSurfaceColor());
+        statusLabel.setOpaque(true);
+
+        // Add event listener for create list button
+        createListButton.addActionListener(e -> showCreateListDialog());
     }
     
     private void setupLayout() {
@@ -154,6 +163,7 @@ public class StreamlinedMainWindow extends JFrame {
         listsPanel.setOpaque(false);
         JLabel listsLabel = new JLabel("📂 My Lists");
         listsLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        listsLabel.setForeground(ThemeManager.getTextPrimaryColor());
         listsLabel.setBorder(new EmptyBorder(0, 0, 8, 0));
         listsPanel.add(listsLabel, BorderLayout.NORTH);
         listsPanel.add(new JScrollPane(userListsList), BorderLayout.CENTER);
@@ -164,6 +174,7 @@ public class StreamlinedMainWindow extends JFrame {
         viewModePanel.setBorder(new EmptyBorder(15, 0, 15, 0));
         JLabel viewLabel = new JLabel("👁️ View");
         viewLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        viewLabel.setForeground(ThemeManager.getTextPrimaryColor());
         viewLabel.setBorder(new EmptyBorder(0, 0, 5, 0));
         viewModePanel.add(viewLabel, BorderLayout.NORTH);
         viewModePanel.add(viewModeComboBox, BorderLayout.CENTER);
@@ -210,8 +221,7 @@ public class StreamlinedMainWindow extends JFrame {
         viewModeComboBox.addActionListener(e -> {
             String selected = (String) viewModeComboBox.getSelectedItem();
             if (selected != null) {
-                if (selected.contains("List")) currentViewMode = Constants.VIEW_MODE_LIST;
-                else if (selected.contains("Magazine")) currentViewMode = Constants.VIEW_MODE_MAGAZINE;
+                if (selected.contains("Magazine")) currentViewMode = Constants.VIEW_MODE_MAGAZINE;
                 else if (selected.contains("Reel")) currentViewMode = Constants.VIEW_MODE_REEL;
                 
                 loadArticlesForList(selectedList);
@@ -222,6 +232,7 @@ public class StreamlinedMainWindow extends JFrame {
         discoverButton.addActionListener(e -> openFeedDiscovery());
         settingsButton.addActionListener(e -> showSettingsDialog());
         logoutButton.addActionListener(e -> performLogout());
+        themeToggleButton.addActionListener(e -> toggleTheme());
     }
     
     private String extractListName(String listItem) {
@@ -242,9 +253,8 @@ public class StreamlinedMainWindow extends JFrame {
     private void showEmptyState() {
         feedPanel.removeAll();
         
-        JPanel emptyPanel = new JPanel();
+        JPanel emptyPanel = ThemeManager.createThemedPanel();
         emptyPanel.setLayout(new BoxLayout(emptyPanel, BoxLayout.Y_AXIS));
-        emptyPanel.setBackground(Color.WHITE);
         emptyPanel.setBorder(new EmptyBorder(100, 50, 100, 50));
         
         JLabel welcomeLabel = new JLabel("<html><center>" +
@@ -253,16 +263,12 @@ public class StreamlinedMainWindow extends JFrame {
             "<p>Browse our curated collection of high-quality sources<br>" +
             "from news, tech, sports, science, and more.</p>" +
             "</center></html>");
+        welcomeLabel.setForeground(ThemeManager.getTextPrimaryColor());
         welcomeLabel.setHorizontalAlignment(SwingConstants.CENTER);
         welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JButton discoverFeedsBtn = new JButton("🔍 Discover RSS Feeds");
+        JButton discoverFeedsBtn = ThemeManager.createAccentButton("🔍 Discover RSS Feeds");
         discoverFeedsBtn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
-        discoverFeedsBtn.setBackground(new Color(0, 123, 255));
-        discoverFeedsBtn.setForeground(Color.WHITE);
-        discoverFeedsBtn.setFocusPainted(false);
-        discoverFeedsBtn.setBorder(new EmptyBorder(12, 24, 12, 24));
-        discoverFeedsBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         discoverFeedsBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         discoverFeedsBtn.addActionListener(e -> openFeedDiscovery());
         
@@ -398,9 +404,6 @@ public class StreamlinedMainWindow extends JFrame {
             showEmptyListState(listName);
         } else {
             switch (currentViewMode) {
-                case Constants.VIEW_MODE_LIST:
-                    renderListView(filteredArticles);
-                    break;
                 case Constants.VIEW_MODE_MAGAZINE:
                     renderMagazineView(filteredArticles);
                     break;
@@ -408,7 +411,7 @@ public class StreamlinedMainWindow extends JFrame {
                     renderReelView(filteredArticles);
                     break;
                 default:
-                    renderListView(filteredArticles);
+                    renderMagazineView(filteredArticles);
             }
         }
         
@@ -432,21 +435,20 @@ public class StreamlinedMainWindow extends JFrame {
     }
     
     private void showEmptyListState(String listName) {
-        JPanel emptyPanel = new JPanel(new BorderLayout());
-        emptyPanel.setBackground(Color.WHITE);
+        JPanel emptyPanel = ThemeManager.createThemedPanel();
+        emptyPanel.setLayout(new BorderLayout());
         emptyPanel.setBorder(new EmptyBorder(80, 40, 80, 40));
         
-        String message = listName.equals(Constants.DEFAULT_LIST_SAVED) 
+        String message = listName.equals(Constants.DEFAULT_LIST_SAVED)
             ? "<html><center><h2>No saved articles</h2><p>Articles you save will appear here</p></center></html>"
             : "<html><center><h2>No articles in " + listName + "</h2><p>Add some RSS feeds to get started!</p></center></html>";
         
         JLabel emptyLabel = new JLabel(message);
         emptyLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        emptyLabel.setForeground(Color.GRAY);
+        emptyLabel.setForeground(ThemeManager.getTextSecondaryColor());
         
-        JButton actionBtn = new JButton("🔍 Discover Feeds");
+        JButton actionBtn = ThemeManager.createAccentButton("🔍 Discover Feeds");
         actionBtn.addActionListener(e -> openFeedDiscovery());
-        styleButton(actionBtn);
         
         emptyPanel.add(emptyLabel, BorderLayout.CENTER);
         emptyPanel.add(actionBtn, BorderLayout.SOUTH);
@@ -454,35 +456,30 @@ public class StreamlinedMainWindow extends JFrame {
         feedPanel.add(emptyPanel);
     }
     
-    private void renderListView(List<Article> articles) {
+    private void renderMagazineView(List<Article> articles) {
         for (Article article : articles) {
             feedPanel.add(createArticleCard(article));
             feedPanel.add(Box.createVerticalStrut(12));
         }
     }
     
-    private void renderMagazineView(List<Article> articles) {
-        JLabel comingSoonLabel = new JLabel("<html><center><h2>📖 Magazine View</h2><p>Beautiful magazine-style reading experience coming soon!</p></center></html>");
-        comingSoonLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        comingSoonLabel.setForeground(Color.GRAY);
-        feedPanel.add(comingSoonLabel);
-    }
-    
     private void renderReelView(List<Article> articles) {
         JLabel comingSoonLabel = new JLabel("<html><center><h2>📱 Reel View</h2><p>TikTok-style article browsing coming soon!</p></center></html>");
         comingSoonLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        comingSoonLabel.setForeground(Color.GRAY);
+        comingSoonLabel.setForeground(ThemeManager.getTextSecondaryColor());
         feedPanel.add(comingSoonLabel);
     }
     
     private JPanel createArticleCard(Article article) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(228, 230, 235), 1),
-            new EmptyBorder(20, 20, 20, 20)
-        ));
-        card.setBackground(article.isRead() ? new Color(249, 249, 249) : Color.WHITE);
+        JPanel card = ThemeManager.createThemedCard();
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(20, 20, 20, 20));
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
+        
+        // Slightly different background for read articles
+        if (article.isRead()) {
+            card.setBackground(new Color(ThemeManager.getCardColor().getRGB() - 0x050505));
+        }
         
         // Article header
         JPanel header = createArticleHeader(article);
@@ -491,14 +488,16 @@ public class StreamlinedMainWindow extends JFrame {
         JLabel titleLabel = new JLabel("<html><h3 style='margin: 0; line-height: 1.3;'>" + 
             (article.getTitle() != null ? article.getTitle() : "Untitled") + "</h3></html>");
         titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        titleLabel.setForeground(ThemeManager.getTextPrimaryColor());
         
         // Article content preview
         String description = article.getDescription();
         if (description != null && description.length() > Constants.ARTICLE_PREVIEW_LENGTH) {
             description = description.substring(0, Constants.ARTICLE_PREVIEW_LENGTH) + "...";
         }
-        JLabel contentLabel = new JLabel("<html><p style='margin: 8px 0 0 0; color: #666; line-height: 1.4;'>" + 
+        JLabel contentLabel = new JLabel("<html><p style='margin: 8px 0 0 0; line-height: 1.4;'>" + 
             (description != null ? description : "No description available") + "</p></html>");
+        contentLabel.setForeground(ThemeManager.getTextSecondaryColor());
         contentLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         
         // Simplified action buttons
@@ -681,33 +680,137 @@ public class StreamlinedMainWindow extends JFrame {
     }
     
     private void showSettingsDialog() {
-        JDialog settingsDialog = new JDialog(this, "Settings", true);
-        settingsDialog.setSize(450, 350);
+        JDialog settingsDialog = new JDialog(this, "⚙️ Settings", true);
+        settingsDialog.setSize(500, 400);
         settingsDialog.setLocationRelativeTo(this);
         
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(new EmptyBorder(25, 25, 25, 25));
-        
+        // Apply dark theme to settings dialog
+        settingsDialog.getContentPane().setBackground(ThemeManager.getBackgroundColor());
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(new EmptyBorder(25, 25, 25, 25));
+        mainPanel.setBackground(ThemeManager.getBackgroundColor());
+
         JLabel titleLabel = new JLabel("⚙️ " + Constants.APP_NAME + " Settings");
         titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+        titleLabel.setForeground(ThemeManager.getTextPrimaryColor());
         titleLabel.setBorder(new EmptyBorder(0, 0, 20, 0));
         
-        JPanel settingsPanel = new JPanel(new GridLayout(0, 1, 8, 8));
-        settingsPanel.add(new JLabel("🔄 Refresh interval: 60 minutes"));
-        settingsPanel.add(new JLabel("🚀 Auto-refresh: Enabled"));
-        settingsPanel.add(new JLabel("🎨 Theme: System Default"));
-        settingsPanel.add(new JLabel("📊 Articles per page: 50"));
-        settingsPanel.add(new JLabel("🤖 AI summaries: Available"));
-        
-        JButton closeButton = new JButton("Close");
-        closeButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        // Create functional settings panel
+        JPanel settingsPanel = new JPanel(new GridBagLayout());
+        settingsPanel.setBackground(ThemeManager.getBackgroundColor());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // Theme setting
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel themeLabel = new JLabel("🎨 Theme:");
+        themeLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        themeLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        settingsPanel.add(themeLabel, gbc);
+
+        gbc.gridx = 1;
+        JButton themeToggle = ThemeManager.createAccentButton(ThemeManager.isDarkMode() ? "🌙 Dark Mode (Active)" : "☀️ Light Mode (Active)");
+        themeToggle.addActionListener(e -> {
+            toggleTheme();
+            themeToggle.setText(ThemeManager.isDarkMode() ? "🌙 Dark Mode (Active)" : "☀️ Light Mode (Active)");
+            ThemeManager.applyThemeToWindow(settingsDialog);
+        });
+        settingsPanel.add(themeToggle, gbc);
+
+        // Refresh interval setting
+        gbc.gridx = 0; gbc.gridy = 1;
+        JLabel refreshLabel = new JLabel("🔄 Auto-refresh:");
+        refreshLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        refreshLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        settingsPanel.add(refreshLabel, gbc);
+
+        gbc.gridx = 1;
+        String[] refreshOptions = {"15 minutes", "30 minutes", "60 minutes", "2 hours", "Never"};
+        JComboBox<String> refreshCombo = new JComboBox<>(refreshOptions);
+        refreshCombo.setSelectedIndex(2); // Default to 60 minutes
+        ThemeManager.applyTheme(refreshCombo);
+        settingsPanel.add(refreshCombo, gbc);
+
+        // Articles per page setting
+        gbc.gridx = 0; gbc.gridy = 2;
+        JLabel articlesLabel = new JLabel("📊 Articles per page:");
+        articlesLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        articlesLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        settingsPanel.add(articlesLabel, gbc);
+
+        gbc.gridx = 1;
+        String[] articleOptions = {"25", "50", "100", "200"};
+        JComboBox<String> articlesCombo = new JComboBox<>(articleOptions);
+        articlesCombo.setSelectedIndex(1); // Default to 50
+        ThemeManager.applyTheme(articlesCombo);
+        settingsPanel.add(articlesCombo, gbc);
+
+        // Default view mode
+        gbc.gridx = 0; gbc.gridy = 3;
+        JLabel viewLabel = new JLabel("👁️ Default view:");
+        viewLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        viewLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        settingsPanel.add(viewLabel, gbc);
+
+        gbc.gridx = 1;
+        String[] viewOptions = {"📖 Magazine View", "📱 Reel View"};
+        JComboBox<String> viewCombo = new JComboBox<>(viewOptions);
+        viewCombo.setSelectedIndex(0); // Default to Magazine
+        ThemeManager.applyTheme(viewCombo);
+        settingsPanel.add(viewCombo, gbc);
+
+        // Notification settings
+        gbc.gridx = 0; gbc.gridy = 4;
+        JLabel notifLabel = new JLabel("🔔 Notifications:");
+        notifLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        notifLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        settingsPanel.add(notifLabel, gbc);
+
+        gbc.gridx = 1;
+        JCheckBox notifCheckbox = new JCheckBox("Enable new article notifications");
+        notifCheckbox.setSelected(true);
+        notifCheckbox.setForeground(ThemeManager.getTextPrimaryColor());
+        notifCheckbox.setBackground(ThemeManager.getBackgroundColor());
+        settingsPanel.add(notifCheckbox, gbc);
+
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
+
+        JButton saveButton = ThemeManager.createAccentButton("💾 Save Settings");
+        JButton resetButton = ThemeManager.createThemedButton("🔄 Reset to Defaults");
+        JButton closeButton = ThemeManager.createThemedButton("❌ Close");
+
+        saveButton.addActionListener(e -> {
+            // Save settings logic here
+            statusLabel.setText("Settings saved successfully!");
+            settingsDialog.dispose();
+        });
+
+        resetButton.addActionListener(e -> {
+            refreshCombo.setSelectedIndex(2);
+            articlesCombo.setSelectedIndex(1);
+            viewCombo.setSelectedIndex(0);
+            notifCheckbox.setSelected(true);
+            statusLabel.setText("Settings reset to defaults");
+        });
+
         closeButton.addActionListener(e -> settingsDialog.dispose());
         
-        panel.add(titleLabel, BorderLayout.NORTH);
-        panel.add(settingsPanel, BorderLayout.CENTER);
-        panel.add(closeButton, BorderLayout.SOUTH);
-        
-        settingsDialog.add(panel);
+        buttonPanel.add(saveButton);
+        buttonPanel.add(resetButton);
+        buttonPanel.add(closeButton);
+
+        mainPanel.add(titleLabel, BorderLayout.NORTH);
+        mainPanel.add(settingsPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        settingsDialog.add(mainPanel);
+
+        // Apply theme to entire dialog
+        ThemeManager.applyThemeToWindow(settingsDialog);
         settingsDialog.setVisible(true);
     }
     
@@ -732,6 +835,46 @@ public class StreamlinedMainWindow extends JFrame {
         });
     }
     
+    private void toggleTheme() {
+        ThemeManager.toggleTheme();
+
+        // Update the theme for all components
+        applyTheme();
+
+        // Update all UI components with new theme
+        updateComponentsWithTheme();
+
+        // Update the text of the theme toggle button
+        themeToggleButton.setText(ThemeManager.isDarkMode() ? "☀️ Light Mode" : "🌙 Dark Mode");
+
+        // Refresh the frame to apply changes
+        SwingUtilities.updateComponentTreeUI(this);
+        revalidate();
+        repaint();
+    }
+
+    private void updateComponentsWithTheme() {
+        // Update main panels
+        sidePanel.setBackground(ThemeManager.getSurfaceColor());
+        feedPanel.setBackground(ThemeManager.getBackgroundColor());
+
+        // Update labels
+        userLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        statusLabel.setForeground(ThemeManager.getTextSecondaryColor());
+
+        // Update lists
+        userListsList.setBackground(ThemeManager.getCardColor());
+        userListsList.setForeground(ThemeManager.getTextPrimaryColor());
+
+        // Update combobox
+        viewModeComboBox.setBackground(ThemeManager.getCardColor());
+        viewModeComboBox.setForeground(ThemeManager.getTextPrimaryColor());
+
+        // Update scroll pane
+        feedScrollPane.setBackground(ThemeManager.getBackgroundColor());
+        feedScrollPane.getViewport().setBackground(ThemeManager.getBackgroundColor());
+    }
+
     // Custom list cell renderer
     private static class CustomListCellRenderer extends DefaultListCellRenderer {
         @Override
@@ -742,14 +885,65 @@ public class StreamlinedMainWindow extends JFrame {
             label.setBorder(new EmptyBorder(10, 15, 10, 15));
             
             if (isSelected) {
-                label.setBackground(new Color(0, 123, 255));
-                label.setForeground(Color.WHITE);
+                label.setBackground(ThemeManager.getAccentColor());
+                label.setForeground(ThemeManager.getSurfaceColor());
             } else {
-                label.setBackground(Color.WHITE);
-                label.setForeground(Color.BLACK);
+                label.setBackground(ThemeManager.getCardColor());
+                label.setForeground(ThemeManager.getTextPrimaryColor());
             }
             
             return label;
         }
+    }
+
+    private void showCreateListDialog() {
+        JDialog createListDialog = new JDialog(this, "Create New List", true);
+        createListDialog.setSize(400, 200);
+        createListDialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBackground(ThemeManager.getBackgroundColor());
+
+        JLabel titleLabel = new JLabel("📂 Create New List");
+        titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        titleLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        titleLabel.setBorder(new EmptyBorder(0, 0, 15, 0));
+
+        JTextField listNameField = new JTextField();
+        listNameField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        ThemeManager.applyTheme(listNameField);
+        listNameField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(ThemeManager.getBorderColor()),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setBackground(ThemeManager.getBackgroundColor());
+
+        JButton createButton = ThemeManager.createAccentButton("Create");
+        JButton cancelButton = ThemeManager.createThemedButton("Cancel");
+
+        createButton.addActionListener(e -> {
+            String listName = listNameField.getText().trim();
+            if (!listName.isEmpty()) {
+                // Add to the list model
+                userListsModel.addElement("📁 " + listName);
+                createListDialog.dispose();
+                statusLabel.setText("Created new list: " + listName);
+            }
+        });
+
+        cancelButton.addActionListener(e -> createListDialog.dispose());
+
+        buttonPanel.add(createButton);
+        buttonPanel.add(cancelButton);
+
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(listNameField, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        createListDialog.add(panel);
+        createListDialog.setVisible(true);
     }
 }

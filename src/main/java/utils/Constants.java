@@ -1,5 +1,7 @@
 package utils;
 
+import java.awt.Color;
+
 public class Constants {
     // Application Information
     public static final String APP_NAME = "FeedHawk";
@@ -11,15 +13,17 @@ public class Constants {
     public static final String DEFAULT_DB_USERNAME = "feedhawk_user";
     public static final String DEFAULT_DB_PASSWORD = "feedhawk_pass";
 
-    // Feed Categories
-    public static final String CATEGORY_TECH = "Tech";
+    // Feed Categories (for discovery and filtering)
     public static final String CATEGORY_NEWS = "News";
+    public static final String CATEGORY_TECH = "Tech";
     public static final String CATEGORY_SPORTS = "Sports";
     public static final String CATEGORY_SCIENCE = "Science";
     public static final String CATEGORY_ENTERTAINMENT = "Entertainment";
     public static final String CATEGORY_BUSINESS = "Business";
     public static final String CATEGORY_HEALTH = "Health";
     public static final String CATEGORY_LIFESTYLE = "Lifestyle";
+    public static final String CATEGORY_GAMING = "Gaming";
+    public static final String CATEGORY_FINANCE = "Finance";
 
     // UI Constants
     public static final int WINDOW_WIDTH = 1200;
@@ -41,6 +45,7 @@ public class Constants {
     public static final int DEFAULT_ARTICLES_PER_PAGE = 50;
     public static final int MAX_ARTICLES_PER_PAGE = 200;
     public static final int RECENT_ARTICLES_LIMIT = 100;
+    public static final int ITEMS_PER_LIST_IN_HOME = 10; // For stacked display
 
     // Password Requirements
     public static final int MIN_PASSWORD_LENGTH = 8;
@@ -72,25 +77,67 @@ public class Constants {
     public static final String SUCCESS_FEED_ADDED = "Feed added successfully";
     public static final String SUCCESS_FEED_UPDATED = "Feed updated successfully";
 
-    // Default Lists
+    // Default Lists (User-created organization)
     public static final String DEFAULT_LIST_HOME = "Home";
+    public static final String DEFAULT_LIST_SAVED = "Saved";
     public static final String DEFAULT_LIST_BOOKMARKS = "Bookmarks";
     public static final String DEFAULT_LIST_READ_LATER = "Read Later";
 
     // Article States
     public static final String ARTICLE_STATE_UNREAD = "unread";
     public static final String ARTICLE_STATE_READ = "read";
-    public static final String ARTICLE_STATE_BOOKMARKED = "bookmarked";
-    public static final String ARTICLE_STATE_READ_LATER = "read_later";
+    public static final String ARTICLE_STATE_SAVED = "saved";
 
     // Feed Update Status
     public static final String FEED_STATUS_ACTIVE = "active";
     public static final String FEED_STATUS_INACTIVE = "inactive";
     public static final String FEED_STATUS_ERROR = "error";
 
-    // AI Summary Settings (for future implementation)
+    // View Modes - Only Magazine and Reel views (removed list view)
+    public static final String VIEW_MODE_MAGAZINE = "magazine";
+    public static final String VIEW_MODE_REEL = "reel";
+
+    // Theme Colors - PROPER Dark Mode (Default) - Actually dark and aesthetic
+    public static final Color DARK_BACKGROUND = new Color(16, 16, 16);          // Almost black
+    public static final Color DARK_SURFACE = new Color(24, 24, 24);             // Very dark gray
+    public static final Color DARK_CARD = new Color(32, 32, 32);                // Dark card background
+    public static final Color DARK_TEXT_PRIMARY = new Color(255, 255, 255);     // Pure white text
+    public static final Color DARK_TEXT_SECONDARY = new Color(170, 170, 170);   // Light gray text
+    public static final Color DARK_ACCENT = new Color(255, 149, 0);             // Bright orange accent
+    public static final Color DARK_BORDER = new Color(64, 64, 64);              // Dark border
+    public static final Color DARK_HOVER = new Color(48, 48, 48);               // Hover state
+
+    // Theme Colors - Light Mode
+    public static final Color LIGHT_BACKGROUND = new Color(255, 255, 255);      // Pure white
+    public static final Color LIGHT_SURFACE = new Color(248, 249, 250);         // Very light gray
+    public static final Color LIGHT_CARD = new Color(255, 255, 255);            // White cards
+    public static final Color LIGHT_TEXT_PRIMARY = new Color(0, 0, 0);          // Pure black text
+    public static final Color LIGHT_TEXT_SECONDARY = new Color(85, 85, 85);     // Dark gray text
+    public static final Color LIGHT_ACCENT = new Color(0, 122, 255);            // Blue accent
+    public static final Color LIGHT_BORDER = new Color(200, 200, 200);          // Light border
+    public static final Color LIGHT_HOVER = new Color(240, 240, 240);           // Light hover
+
+    // Theme Settings
+    public static final boolean DEFAULT_DARK_MODE = true;
+
+    // Search and Discovery
+    public static final String YOUTUBE_RSS_BASE = "https://www.youtube.com/feeds/videos.xml?channel_id=";
+    public static final String YOUTUBE_USER_RSS_BASE = "https://www.youtube.com/feeds/videos.xml?user=";
+    public static final String[] POPULAR_RSS_PROVIDERS = {
+        "rss.cnn.com", "feeds.bbci.co.uk", "rss.nytimes.com",
+        "feeds.reuters.com", "feeds.washingtonpost.com", "feeds.theguardian.com"
+    };
+
+    // AI Summary Settings
     public static final int SUMMARY_MAX_LENGTH = 500;
     public static final String SUMMARY_LANGUAGE = "en";
+
+    // Discovery Categories for Search
+    public static final String[] DISCOVERY_CATEGORIES = {
+        CATEGORY_NEWS, CATEGORY_TECH, CATEGORY_SPORTS, CATEGORY_SCIENCE,
+        CATEGORY_ENTERTAINMENT, CATEGORY_BUSINESS, CATEGORY_HEALTH,
+        CATEGORY_LIFESTYLE, CATEGORY_GAMING, CATEGORY_FINANCE
+    };
 
     private Constants() {
         // Prevent instantiation

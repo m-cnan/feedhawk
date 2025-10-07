@@ -16,12 +16,14 @@ import java.util.regex.Pattern;
 
 /**
  * Powerful RSS search service that can find RSS feeds from:
- * - Any website by auto-discovering RSS feeds
+ * - Any website by auto-discovering RSS feeds (using feedsearch.dev API)
  * - YouTube channels and users
  * - Popular RSS feed directories
+ * - Keyword-based search across the internet
  */
 public class RSSSearchService {
     private static final Logger logger = LoggerFactory.getLogger(RSSSearchService.class);
+    private static final FeedSearchAPI feedSearchAPI = new FeedSearchAPI();
     
     public static class SearchResult {
         private final String title;
@@ -48,6 +50,7 @@ public class RSSSearchService {
     
     /**
      * Main search method that searches across all sources
+     * Enhanced with feedsearch.dev API for better results
      */
     public static List<SearchResult> searchFeeds(String query) {
         List<SearchResult> results = new ArrayList<>();
@@ -58,24 +61,76 @@ public class RSSSearchService {
         
         String cleanQuery = query.trim().toLowerCase();
         
-        // 1. Check if it's a direct URL
+        // 1. Use feedsearch.dev API for primary search
+        logger.info("Using feedsearch.dev API for query: {}", cleanQuery);
+        results.addAll(searchWithFeedSearchAPI(cleanQuery));
+        
+        // 2. Check if it's a direct URL - use feedsearch.dev
         if (isValidUrl(cleanQuery)) {
-            results.addAll(discoverFeedsFromUrl(cleanQuery));
+            results.addAll(searchWithFeedSearchAPI(cleanQuery));
         }
         
-        // 2. Search YouTube if it looks like a channel search
+        // 3. Search YouTube if it looks like a channel search
         if (cleanQuery.contains("youtube") || cleanQuery.contains("yt") || cleanQuery.startsWith("@")) {
             results.addAll(searchYouTube(cleanQuery));
         }
         
-        // 3. Auto-discover from website domains
-        results.addAll(searchWebsiteDomains(cleanQuery));
-        
-        // 4. Search popular RSS directories
-        results.addAll(searchRSSDirectories(cleanQuery));
+        // 4. If we don't have many results, fall back to our curated sources
+        if (results.size() < 5) {
+            results.addAll(searchRSSDirectories(cleanQuery));
+            results.addAll(searchWebsiteDomains(cleanQuery));
+        }
         
         // Remove duplicates and limit results
         return removeDuplicates(results).subList(0, Math.min(results.size(), 50));
+    }
+    
+    /**
+     * Search using feedsearch.dev API
+     */
+    private static List<SearchResult> searchWithFeedSearchAPI(String query) {
+        List<SearchResult> results = new ArrayList<>();
+        
+        try {
+            List<FeedSearchAPI.FeedResult> apiResults;
+            
+            // Check if it's a URL or a keyword search
+            if (isValidUrl(query)) {
+                apiResults = feedSearchAPI.searchByWebsite(query);
+            } else {
+                apiResults = feedSearchAPI.searchByKeyword(query);
+            }
+            
+            // Convert API results to our SearchResult format
+            for (FeedSearchAPI.FeedResult apiResult : apiResults) {
+                String title = apiResult.getTitle();
+                if (title == null || title.trim().isEmpty()) {
+                    title = apiResult.getSiteName() != null ? 
+                            apiResult.getSiteName() : "Untitled Feed";
+                }
+                
+                String description = apiResult.getDescription();
+                if (description == null || description.trim().isEmpty()) {
+                    description = "RSS feed from " + 
+                        (apiResult.getSiteName() != null ? apiResult.getSiteName() : "website");
+                }
+                
+                results.add(new SearchResult(
+                    title,
+                    apiResult.getUrl(),
+                    description,
+                    "Website",
+                    "feedsearch.dev"
+                ));
+            }
+            
+            logger.info("feedsearch.dev returned {} results for: {}", results.size(), query);
+            
+        } catch (Exception e) {
+            logger.error("Error using feedsearch.dev API", e);
+        }
+        
+        return results;
     }
     
     /**

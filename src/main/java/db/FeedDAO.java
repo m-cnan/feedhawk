@@ -184,6 +184,48 @@ public class FeedDAO {
         }
         return false;
     }
+    
+    /**
+     * Subscribe a user to a feed by adding to their default list
+     */
+    public boolean subscribeUserToFeed(int userId, int sourceId) {
+        // First, get the user's default list (Home list)
+        try (Connection conn = DBConnection.getConnection()) {
+            // Get user's default list ID
+            String getListQuery = "SELECT list_id FROM lists WHERE user_id = ? AND list_name = 'Home' LIMIT 1";
+            int listId = -1;
+            
+            try (PreparedStatement stmt = conn.prepareStatement(getListQuery)) {
+                stmt.setInt(1, userId);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    listId = rs.getInt("list_id");
+                }
+            }
+            
+            // If no Home list exists, create it
+            if (listId == -1) {
+                String createListQuery = "INSERT INTO lists (user_id, list_name) VALUES (?, 'Home') RETURNING list_id";
+                try (PreparedStatement stmt = conn.prepareStatement(createListQuery)) {
+                    stmt.setInt(1, userId);
+                    ResultSet rs = stmt.executeQuery();
+                    if (rs.next()) {
+                        listId = rs.getInt("list_id");
+                        logger.info("Created Home list for user {}", userId);
+                    }
+                }
+            }
+            
+            // Now subscribe to the feed
+            if (listId != -1) {
+                return subscribeToFeed(listId, sourceId);
+            }
+            
+        } catch (SQLException e) {
+            logger.error("Error subscribing user {} to feed {}", userId, sourceId, e);
+        }
+        return false;
+    }
 
     public Optional<Article> saveArticle(Article article) {
         try (Connection conn = DBConnection.getConnection();

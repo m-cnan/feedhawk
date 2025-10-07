@@ -3,8 +3,12 @@ package ui;
 import db.FeedDAO;
 import db.models.Feed;
 import rss.FeedParser;
+import rss.RSSSearchService;
 import utils.Constants;
+import utils.ThemeManager;
 import utils.Validator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -15,37 +19,48 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
- * Feed Discovery Screen for browsing and subscribing to curated RSS sources
- * This replaces the confusing category/list mixing with clear discovery UX
+ * Enhanced Feed Discovery Screen with powerful search capabilities
+ * Can search any website, YouTube channels, and curated RSS sources
  */
 public class FeedDiscoveryScreen extends JDialog {
+    private static final Logger logger = LoggerFactory.getLogger(FeedDiscoveryScreen.class);
+    
     private final FeedDAO feedDAO;
     private final int userId;
     private final Runnable onFeedAdded;
     
     private JTextField searchField;
+    private JButton searchButton;
     private JList<String> categoryList;
     private JPanel feedsPanel;
+    private JPanel liveSearchResultsPanel;  // Separate panel for live search results
     private JScrollPane feedsScrollPane;
     private JLabel statusLabel;
-    
+    private JTabbedPane mainTabs;
+
     // Curated feeds by category
     private Map<String, List<CuratedFeed>> curatedFeeds;
-    
+    private List<RSSSearchService.SearchResult> currentSearchResults;
+
     public FeedDiscoveryScreen(Frame parent, int userId, Runnable onFeedAdded) {
-        super(parent, "Discover RSS Feeds", true);
+        super(parent, "🔍 Discover RSS Feeds", true);
         this.feedDAO = new FeedDAO();
         this.userId = userId;
         this.onFeedAdded = onFeedAdded;
-        
+        this.currentSearchResults = new ArrayList<>();
+
+        // Apply dark theme
+        applyTheme();
+
         initializeCuratedFeeds();
         initializeComponents();
         setupLayout();
         setupEventListeners();
         
-        setSize(800, 600);
+        setSize(900, 700);
         setLocationRelativeTo(parent);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         
@@ -53,15 +68,25 @@ public class FeedDiscoveryScreen extends JDialog {
         loadFeedsForCategory(Constants.CATEGORY_NEWS);
     }
     
+    private void applyTheme() {
+        // Apply dark theme to the entire dialog
+        getContentPane().setBackground(ThemeManager.getBackgroundColor());
+        ThemeManager.applyThemeToWindow(this);
+    }
+
     private void initializeCuratedFeeds() {
         curatedFeeds = new HashMap<>();
         
-        // News Sources
+        // News Sources - Enhanced with Al Jazeera and more
         List<CuratedFeed> newsFeeds = new ArrayList<>();
         newsFeeds.add(new CuratedFeed("BBC News", "https://feeds.bbci.co.uk/news/world/rss.xml", "Latest breaking news and top stories", Constants.CATEGORY_NEWS));
+        newsFeeds.add(new CuratedFeed("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "Independent news from Middle East perspective", Constants.CATEGORY_NEWS));
         newsFeeds.add(new CuratedFeed("Reuters", "https://feeds.reuters.com/reuters/topNews", "International breaking news and headlines", Constants.CATEGORY_NEWS));
         newsFeeds.add(new CuratedFeed("Associated Press", "https://feeds.apnews.com/rss/apf-topnews", "Breaking news and latest headlines", Constants.CATEGORY_NEWS));
-        newsFeeds.add(new CuratedFeed("CNN", "http://rss.cnn.com/rss/edition.rss", "CNN international news", Constants.CATEGORY_NEWS));
+        newsFeeds.add(new CuratedFeed("CNN International", "http://rss.cnn.com/rss/edition.rss", "CNN international news", Constants.CATEGORY_NEWS));
+        newsFeeds.add(new CuratedFeed("The Guardian", "https://www.theguardian.com/world/rss", "Guardian world news", Constants.CATEGORY_NEWS));
+        newsFeeds.add(new CuratedFeed("New York Times", "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "NYT World News", Constants.CATEGORY_NEWS));
+        newsFeeds.add(new CuratedFeed("NPR News", "https://feeds.npr.org/1001/rss.xml", "National Public Radio news", Constants.CATEGORY_NEWS));
         curatedFeeds.put(Constants.CATEGORY_NEWS, newsFeeds);
         
         // Tech Sources
@@ -101,78 +126,129 @@ public class FeedDiscoveryScreen extends JDialog {
     }
     
     private void initializeComponents() {
-        // Search field
+        // Search field with proper dark theme
         searchField = new JTextField();
         searchField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        searchField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(206, 212, 218)),
-            new EmptyBorder(8, 12, 8, 12)
-        ));
-        
-        // Category list
+        ThemeManager.applyTheme(searchField);
+
+        // Add real-time search listener
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private Timer searchTimer = new Timer(500, e -> performLiveSearch());
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { scheduleSearch(); }
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { scheduleSearch(); }
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { scheduleSearch(); }
+
+            private void scheduleSearch() {
+                searchTimer.restart();
+            }
+        });
+
+        // Search button with dark theme
+        searchButton = ThemeManager.createAccentButton("🔍 Search");
+
+        // Category list with dark theme
         DefaultListModel<String> categoryModel = new DefaultListModel<>();
         for (String category : Constants.DISCOVERY_CATEGORIES) {
             categoryModel.addElement(category);
         }
         categoryList = new JList<>(categoryModel);
         categoryList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        categoryList.setSelectedIndex(0); // Select News by default
+        categoryList.setSelectedIndex(0);
         categoryList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        
-        // Feeds panel
+        ThemeManager.applyTheme(categoryList);
+
+        // Feeds panel with dark theme
         feedsPanel = new JPanel();
         feedsPanel.setLayout(new BoxLayout(feedsPanel, BoxLayout.Y_AXIS));
-        feedsPanel.setBackground(Color.WHITE);
-        
+        feedsPanel.setBackground(ThemeManager.getBackgroundColor());
+
         feedsScrollPane = new JScrollPane(feedsPanel);
         feedsScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         feedsScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        
-        // Status label
+        ThemeManager.applyTheme(feedsScrollPane);
+
+        // Status label with dark theme
         statusLabel = new JLabel("Browse curated RSS sources by category");
         statusLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-        statusLabel.setForeground(Color.GRAY);
+        statusLabel.setForeground(ThemeManager.getTextSecondaryColor());
+
+        // Main tabs with dark theme
+        mainTabs = new JTabbedPane();
+        mainTabs.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        mainTabs.setBackground(ThemeManager.getCardColor());
+        mainTabs.setForeground(ThemeManager.getTextPrimaryColor());
+
+        // Curated Feeds tab with dark theme
+        JPanel curatedFeedsPanel = ThemeManager.createThemedPanel();
+        curatedFeedsPanel.setLayout(new BorderLayout());
+        curatedFeedsPanel.add(feedsScrollPane, BorderLayout.CENTER);
+        curatedFeedsPanel.add(statusLabel, BorderLayout.SOUTH);
+
+        mainTabs.addTab("📚 Curated Feeds", curatedFeedsPanel);
+
+        // Add live search tab
+        JPanel liveSearchPanel = createLiveSearchPanel();
+        mainTabs.addTab("🌐 Live Search", liveSearchPanel);
     }
     
     private void setupLayout() {
         setLayout(new BorderLayout());
         
-        // Header panel
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        // Header panel with dark theme
+        JPanel headerPanel = ThemeManager.createThemedPanel();
         headerPanel.setBorder(new EmptyBorder(20, 20, 10, 20));
-        headerPanel.setBackground(new Color(248, 249, 250));
+        headerPanel.setLayout(new BorderLayout());
         
         JLabel titleLabel = new JLabel("🔍 Discover RSS Feeds");
         titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        titleLabel.setForeground(ThemeManager.getAccentColor());
         headerPanel.add(titleLabel, BorderLayout.WEST);
         
-        JPanel searchPanel = new JPanel(new BorderLayout());
-        searchPanel.add(new JLabel("Search:"), BorderLayout.WEST);
-        searchPanel.add(Box.createHorizontalStrut(10), BorderLayout.CENTER);
+        JPanel searchPanel = new JPanel(new BorderLayout(10, 0));
+        searchPanel.setOpaque(false);
+        JLabel searchLabel = new JLabel("Search:");
+        searchLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        searchPanel.add(searchLabel, BorderLayout.WEST);
         searchPanel.add(searchField, BorderLayout.CENTER);
+        searchPanel.add(searchButton, BorderLayout.EAST);
         headerPanel.add(searchPanel, BorderLayout.CENTER);
         
-        // Main content panel
-        JPanel mainPanel = new JPanel(new BorderLayout());
+        // Main content panel with dark theme
+        JPanel mainPanel = ThemeManager.createThemedPanel();
         mainPanel.setBorder(new EmptyBorder(0, 20, 20, 20));
+        mainPanel.setLayout(new BorderLayout());
         
         // Left sidebar with categories
-        JPanel sidebarPanel = new JPanel(new BorderLayout());
+        JPanel sidebarPanel = ThemeManager.createThemedPanel();
         sidebarPanel.setPreferredSize(new Dimension(150, 0));
         sidebarPanel.setBorder(new EmptyBorder(0, 0, 0, 20));
+        sidebarPanel.setLayout(new BorderLayout());
         
         JLabel categoriesLabel = new JLabel("Categories");
         categoriesLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        categoriesLabel.setForeground(ThemeManager.getTextPrimaryColor());
         categoriesLabel.setBorder(new EmptyBorder(0, 0, 10, 0));
         
         sidebarPanel.add(categoriesLabel, BorderLayout.NORTH);
-        sidebarPanel.add(new JScrollPane(categoryList), BorderLayout.CENTER);
         
-        // Right content area
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.add(feedsScrollPane, BorderLayout.CENTER);
-        contentPanel.add(statusLabel, BorderLayout.SOUTH);
+        JScrollPane categoryScrollPane = new JScrollPane(categoryList);
+        categoryScrollPane.setBackground(ThemeManager.getCardColor());
+        categoryScrollPane.getViewport().setBackground(ThemeManager.getCardColor());
+        categoryScrollPane.setBorder(null);
+        sidebarPanel.add(categoryScrollPane, BorderLayout.CENTER);
         
+        // Right content area with tabs
+        JPanel contentPanel = ThemeManager.createThemedPanel();
+        contentPanel.setLayout(new BorderLayout());
+        
+        // Apply theme to tabs
+        ThemeManager.applyTheme(mainTabs);
+        contentPanel.add(mainTabs, BorderLayout.CENTER);
+
         mainPanel.add(sidebarPanel, BorderLayout.WEST);
         mainPanel.add(contentPanel, BorderLayout.CENTER);
         
@@ -191,7 +267,7 @@ public class FeedDiscoveryScreen extends JDialog {
         });
         
         // Search functionality
-        searchField.addActionListener(e -> performSearch());
+        searchButton.addActionListener(e -> performSearch());
     }
     
     private void loadFeedsForCategory(String category) {
@@ -368,6 +444,232 @@ public class FeedDiscoveryScreen extends JDialog {
         feedsPanel.repaint();
     }
     
+    private JPanel createLiveSearchPanel() {
+        JPanel liveSearchPanel = ThemeManager.createThemedPanel();
+        liveSearchPanel.setLayout(new BorderLayout());
+
+        // Live search instructions
+        JLabel instructionsLabel = new JLabel("<html><center>" +
+            "<h3 style='color: " + toHexColor(ThemeManager.getAccentColor()) + ";'>🌐 Live Internet RSS Search</h3>" +
+            "<p style='font-size: 13px;'>Enter any website URL, YouTube channel, or search term</p>" +
+            "<p style='font-size: 12px; color: " + toHexColor(ThemeManager.getTextSecondaryColor()) + ";'>Examples: reddit.com, @mkbhd, techcrunch, nasa</p>" +
+            "</center></html>");
+        instructionsLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        instructionsLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        instructionsLabel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        // Create and store the search results panel
+        liveSearchResultsPanel = new JPanel();
+        liveSearchResultsPanel.setLayout(new BoxLayout(liveSearchResultsPanel, BoxLayout.Y_AXIS));
+        liveSearchResultsPanel.setBackground(ThemeManager.getBackgroundColor());
+
+        JScrollPane searchScrollPane = new JScrollPane(liveSearchResultsPanel);
+        searchScrollPane.setBackground(ThemeManager.getBackgroundColor());
+        searchScrollPane.getViewport().setBackground(ThemeManager.getBackgroundColor());
+        searchScrollPane.setBorder(null);
+        ThemeManager.applyTheme(searchScrollPane);
+
+        liveSearchPanel.add(instructionsLabel, BorderLayout.NORTH);
+        liveSearchPanel.add(searchScrollPane, BorderLayout.CENTER);
+
+        return liveSearchPanel;
+    }
+    
+    // Helper method to convert Color to hex string for HTML
+    private String toHexColor(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    private void performLiveSearch() {
+        String searchTerm = searchField.getText().trim();
+        if (searchTerm.isEmpty()) {
+            return;
+        }
+
+        statusLabel.setText("🔍 Searching the internet for RSS feeds...");
+
+        SwingWorker<List<RSSSearchService.SearchResult>, Void> worker = new SwingWorker<>() {
+            @Override
+            protected List<RSSSearchService.SearchResult> doInBackground() throws Exception {
+                return RSSSearchService.searchFeeds(searchTerm);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<RSSSearchService.SearchResult> results = get();
+                    displayLiveSearchResults(results);
+                } catch (Exception e) {
+                    statusLabel.setText("Search failed: " + e.getMessage());
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void displayLiveSearchResults(List<RSSSearchService.SearchResult> results) {
+        liveSearchResultsPanel.removeAll();
+
+        if (results.isEmpty()) {
+            JLabel noResultsLabel = new JLabel("<html><center>" +
+                "<h3 style='color: " + toHexColor(ThemeManager.getTextPrimaryColor()) + ";'>No RSS feeds found</h3>" +
+                "<p style='color: " + toHexColor(ThemeManager.getTextSecondaryColor()) + ";'>Try a different website or search term</p>" +
+                "</center></html>");
+            noResultsLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            noResultsLabel.setForeground(ThemeManager.getTextSecondaryColor());
+            liveSearchResultsPanel.add(noResultsLabel);
+        } else {
+            for (RSSSearchService.SearchResult result : results) {
+                liveSearchResultsPanel.add(createSearchResultCard(result));
+                liveSearchResultsPanel.add(Box.createVerticalStrut(10));
+            }
+        }
+
+        statusLabel.setText("✅ Found " + results.size() + " RSS feeds");
+        liveSearchResultsPanel.revalidate();
+        liveSearchResultsPanel.repaint();
+    }
+
+    private JPanel createSearchResultCard(RSSSearchService.SearchResult result) {
+        JPanel card = ThemeManager.createThemedCard();
+        card.setLayout(new BorderLayout());
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+
+        // Feed info
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setOpaque(false);
+
+        JLabel nameLabel = new JLabel(result.getTitle());
+        nameLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        nameLabel.setForeground(ThemeManager.getTextPrimaryColor());
+
+        JLabel descLabel = new JLabel("<html>" + result.getDescription() + "</html>");
+        descLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        descLabel.setForeground(ThemeManager.getTextSecondaryColor());
+
+        JLabel urlLabel = new JLabel(result.getUrl());
+        urlLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 11));
+        urlLabel.setForeground(ThemeManager.getAccentColor());
+
+        JLabel typeLabel = new JLabel("📡 " + result.getType().toUpperCase() + " • " + result.getCategory());
+        typeLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 10));
+        typeLabel.setForeground(ThemeManager.getAccentColor());
+
+        infoPanel.add(nameLabel);
+        infoPanel.add(Box.createVerticalStrut(3));
+        infoPanel.add(typeLabel);
+        infoPanel.add(Box.createVerticalStrut(5));
+        infoPanel.add(descLabel);
+        infoPanel.add(Box.createVerticalStrut(5));
+        infoPanel.add(urlLabel);
+
+        // Subscribe button
+        JButton subscribeButton = ThemeManager.createAccentButton("➕ Subscribe");
+        subscribeButton.addActionListener(e -> subscribeToSearchResult(result, subscribeButton));
+
+        card.add(infoPanel, BorderLayout.CENTER);
+        card.add(subscribeButton, BorderLayout.EAST);
+
+        return card;
+    }
+
+    private void subscribeToSearchResult(RSSSearchService.SearchResult result, JButton button) {
+        button.setEnabled(false);
+        button.setText("Adding...");
+
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                try {
+                    // First, check if source already exists
+                    Optional<Feed> existingFeed = feedDAO.findSourceByUrl(result.getUrl());
+                    
+                    int sourceId;
+                    if (existingFeed.isPresent()) {
+                        sourceId = existingFeed.get().getId();
+                        logger.info("Feed already exists with ID: {}", sourceId);
+                    } else {
+                        // Create new feed
+                        Feed feed = new Feed();
+                        feed.setTitle(result.getTitle());
+                        feed.setUrl(result.getUrl());
+                        feed.setDescription(result.getDescription());
+                        feed.setCategory(result.getCategory());
+
+                        Optional<Feed> createdFeed = feedDAO.createSource(feed);
+                        if (!createdFeed.isPresent()) {
+                            logger.error("Failed to create feed: {}", result.getTitle());
+                            return false;
+                        }
+                        sourceId = createdFeed.get().getId();
+                        logger.info("Created new feed with ID: {}", sourceId);
+                    }
+
+                    // Now subscribe the user to this feed (if userId is valid)
+                    if (userId > 0) {
+                        // Get user's default list ID and subscribe
+                        boolean subscribed = feedDAO.subscribeUserToFeed(userId, sourceId);
+                        if (!subscribed) {
+                            logger.warn("Failed to subscribe user {} to feed {}", userId, sourceId);
+                            // Still return true since feed was created
+                        }
+                    }
+
+                    return true;
+                } catch (Exception e) {
+                    logger.error("Error subscribing to feed: " + e.getMessage(), e);
+                    return false;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    boolean success = get();
+                    if (success) {
+                        button.setText("✅ Subscribed!");
+                        button.setBackground(ThemeManager.getCardColor());
+                        button.setForeground(ThemeManager.getTextPrimaryColor());
+                        statusLabel.setText("Successfully subscribed to " + result.getTitle());
+
+                        // Notify parent that a feed was added
+                        if (onFeedAdded != null) {
+                            onFeedAdded.run();
+                        }
+
+                        // Re-enable button after delay
+                        Timer timer = new Timer(3000, evt -> {
+                            button.setEnabled(true);
+                            button.setText("➕ Subscribe");
+                            button.setBackground(ThemeManager.getAccentColor());
+                            button.setForeground(ThemeManager.isDarkMode() ? Color.BLACK : Color.WHITE);
+                        });
+                        timer.setRepeats(false);
+                        timer.start();
+
+                    } else {
+                        button.setEnabled(true);
+                        button.setText("❌ Failed");
+                        statusLabel.setText("Failed to subscribe to feed. Please try again.");
+
+                        Timer timer = new Timer(2000, evt -> {
+                            button.setText("➕ Subscribe");
+                        });
+                        timer.setRepeats(false);
+                        timer.start();
+                    }
+                } catch (Exception e) {
+                    button.setEnabled(true);
+                    button.setText("❌ Error");
+                    statusLabel.setText("Error: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        };
+        worker.execute();
+    }
+
     // Inner class for curated feed data
     private static class CuratedFeed {
         private final String name;

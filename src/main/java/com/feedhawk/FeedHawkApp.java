@@ -6,6 +6,7 @@ import auth.AuthController;
 import db.models.User;
 
 import javax.swing.*;
+import java.awt.*;
 
 /**
  * Main application launcher for FeedHawk RSS Reader
@@ -48,7 +49,7 @@ public class FeedHawkApp {
     }
     
     public static void logout() {
-        AuthController.getInstance().logout();
+        AuthController.getInstance().logoutUser();
         // Close all windows and show login screen
         for (Window window : Window.getWindows()) {
             window.dispose();

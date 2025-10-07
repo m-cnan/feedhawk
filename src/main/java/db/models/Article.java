@@ -13,8 +13,7 @@ public class Article {
     private LocalDateTime publishedDate;
     private LocalDateTime createdAt;
     private boolean isRead;
-    private boolean isBookmarked;
-    private boolean isReadLater;
+    private boolean isSaved; // Simplified: just "Save" instead of bookmark/read-later
     private String guid; // Unique identifier from RSS feed
 
     // Constructors
@@ -28,8 +27,7 @@ public class Article {
         this.guid = guid;
         this.createdAt = LocalDateTime.now();
         this.isRead = false;
-        this.isBookmarked = false;
-        this.isReadLater = false;
+        this.isSaved = false;
     }
 
     // Getters and Setters
@@ -113,20 +111,30 @@ public class Article {
         isRead = read;
     }
 
+    public boolean isSaved() {
+        return isSaved;
+    }
+
+    public void setSaved(boolean saved) {
+        isSaved = saved;
+    }
+
+    // Alias methods for bookmark functionality (using isSaved internally)
     public boolean isBookmarked() {
-        return isBookmarked;
+        return isSaved;
     }
 
     public void setBookmarked(boolean bookmarked) {
-        isBookmarked = bookmarked;
+        this.isSaved = bookmarked;
     }
 
+    // Alias methods for read-later functionality (using isSaved internally)
     public boolean isReadLater() {
-        return isReadLater;
+        return isSaved;
     }
 
     public void setReadLater(boolean readLater) {
-        isReadLater = readLater;
+        this.isSaved = readLater;
     }
 
     public String getGuid() {
@@ -146,7 +154,7 @@ public class Article {
                 ", author='" + author + '\'' +
                 ", publishedDate=" + publishedDate +
                 ", isRead=" + isRead +
-                ", isBookmarked=" + isBookmarked +
+                ", isSaved=" + isSaved +
                 '}';
     }
 }
