@@ -306,4 +306,133 @@ public class FeedDAO {
 
         return feed;
     }
+    
+    // ==========================================
+    // LIST MANAGEMENT METHODS
+    // ==========================================
+    
+    private static final String GET_USER_LISTS = 
+        "SELECT list_id, user_id, name, is_default, created_at FROM lists WHERE user_id = ? ORDER BY is_default DESC, name";
+    
+    private static final String CREATE_LIST = 
+        "INSERT INTO lists (user_id, name, is_default, created_at) VALUES (?, ?, ?, NOW()) RETURNING list_id";
+    
+    private static final String GET_LIST_BY_NAME = 
+        "SELECT list_id, user_id, name, is_default, created_at FROM lists WHERE user_id = ? AND name = ?";
+    
+    /**
+     * Get all lists for a user
+     */
+    public List<UserList> getUserLists(int userId) {
+        List<UserList> lists = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(GET_USER_LISTS)) {
+            
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            
+            while (rs.next()) {
+                UserList list = new UserList();
+                list.setId(rs.getInt("list_id"));
+                list.setUserId(rs.getInt("user_id"));
+                list.setName(rs.getString("name"));
+                list.setDefault(rs.getBoolean("is_default"));
+                
+                Timestamp createdAt = rs.getTimestamp("created_at");
+                if (createdAt != null) {
+                    list.setCreatedAt(createdAt.toLocalDateTime());
+                }
+                
+                lists.add(list);
+            }
+            
+        } catch (SQLException e) {
+            logger.error("Error getting user lists for user: {}", userId, e);
+        }
+        return lists;
+    }
+    
+    /**
+     * Create a new list for a user
+     */
+    public Optional<UserList> createList(int userId, String listName) {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(CREATE_LIST)) {
+            
+            stmt.setInt(1, userId);
+            stmt.setString(2, listName);
+            stmt.setBoolean(3, false); // Only Home is default
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                UserList list = new UserList();
+                list.setId(rs.getInt("list_id"));
+                list.setUserId(userId);
+                list.setName(listName);
+                list.setDefault(false);
+                list.setCreatedAt(LocalDateTime.now());
+                
+                logger.info("Created new list '{}' for user {}", listName, userId);
+                return Optional.of(list);
+            }
+            
+        } catch (SQLException e) {
+            logger.error("Error creating list '{}' for user {}", listName, userId, e);
+        }
+        return Optional.empty();
+    }
+    
+    /**
+     * Subscribe a user to a feed in a specific list
+     */
+    public boolean subscribeToFeedInList(int listId, int sourceId) {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SUBSCRIBE_TO_FEED)) {
+
+            stmt.setInt(1, listId);
+            stmt.setInt(2, sourceId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                logger.info("Subscribed to feed - List: {}, Source: {}", listId, sourceId);
+                return true;
+            }
+
+        } catch (SQLException e) {
+            logger.error("Error subscribing to feed - List: {}, Source: {}", listId, sourceId, e);
+        }
+        return false;
+    }
+    
+    /**
+     * Simple UserList model class
+     */
+    public static class UserList {
+        private int id;
+        private int userId;
+        private String name;
+        private boolean isDefault;
+        private LocalDateTime createdAt;
+        
+        // Getters and setters
+        public int getId() { return id; }
+        public void setId(int id) { this.id = id; }
+        
+        public int getUserId() { return userId; }
+        public void setUserId(int userId) { this.userId = userId; }
+        
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        
+        public boolean isDefault() { return isDefault; }
+        public void setDefault(boolean isDefault) { this.isDefault = isDefault; }
+        
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+        
+        @Override
+        public String toString() {
+            return (isDefault ? "🏠 " : "📁 ") + name;
+        }
+    }
 }

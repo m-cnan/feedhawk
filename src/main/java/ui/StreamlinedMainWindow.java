@@ -17,6 +17,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.time.format.DateTimeFormatter;
 
 public class StreamlinedMainWindow extends JFrame {
@@ -84,10 +85,9 @@ public class StreamlinedMainWindow extends JFrame {
         userLabel.setForeground(ThemeManager.getTextPrimaryColor());
         userLabel.setBorder(new EmptyBorder(0, 0, 15, 0));
         
-        // User Lists - Only Home and Saved (removed bookmark/read later)
+        // User Lists - Load from database
         userListsModel = new DefaultListModel<>();
-        userListsModel.addElement("🏠 " + Constants.DEFAULT_LIST_HOME);
-        userListsModel.addElement("💾 " + Constants.DEFAULT_LIST_SAVED);
+        loadUserLists();
 
         userListsList = new JList<>(userListsModel);
         userListsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -652,6 +652,9 @@ public class StreamlinedMainWindow extends JFrame {
         SwingWorker<Void, String> worker = new SwingWorker<Void, String>() {
             @Override
             protected Void doInBackground() throws Exception {
+                // Refresh user lists first
+                SwingUtilities.invokeLater(() -> loadUserLists());
+                
                 if (currentUser != null) {
                     loadInitialData();
                 } else {
@@ -873,6 +876,32 @@ public class StreamlinedMainWindow extends JFrame {
         // Update scroll pane
         feedScrollPane.setBackground(ThemeManager.getBackgroundColor());
         feedScrollPane.getViewport().setBackground(ThemeManager.getBackgroundColor());
+    }
+    
+    private void loadUserLists() {
+        userListsModel.clear();
+        
+        if (currentUser != null) {
+            // Load user's actual lists from database
+            List<FeedDAO.UserList> userLists = feedDAO.getUserLists(currentUser.getId());
+            
+            // If no lists exist, create default Home list
+            if (userLists.isEmpty()) {
+                Optional<FeedDAO.UserList> homeList = feedDAO.createList(currentUser.getId(), "Home");
+                if (homeList.isPresent()) {
+                    userLists.add(homeList.get());
+                }
+            }
+            
+            // Add lists to model
+            for (FeedDAO.UserList list : userLists) {
+                userListsModel.addElement(list.toString());
+            }
+        } else {
+            // Default lists for guest users
+            userListsModel.addElement("🏠 " + Constants.DEFAULT_LIST_HOME);
+            userListsModel.addElement("💾 " + Constants.DEFAULT_LIST_SAVED);
+        }
     }
 
     // Custom list cell renderer

@@ -575,6 +575,113 @@ public class FeedDiscoveryScreen extends JDialog {
     }
 
     private void subscribeToSearchResult(RSSSearchService.SearchResult result, JButton button) {
+        // Show list selection dialog first
+        showListSelectionDialog(result, button);
+    }
+    
+    private void showListSelectionDialog(RSSSearchService.SearchResult result, JButton originalButton) {
+        if (userId <= 0) {
+            statusLabel.setText("Please log in to subscribe to feeds");
+            return;
+        }
+        
+        // Create dialog
+        JDialog listDialog = new JDialog(this, "Subscribe to Feed", true);
+        listDialog.setSize(400, 300);
+        listDialog.setLocationRelativeTo(this);
+        listDialog.getContentPane().setBackground(ThemeManager.getBackgroundColor());
+        
+        JPanel mainPanel = ThemeManager.createThemedPanel();
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        mainPanel.setLayout(new BorderLayout());
+        
+        // Title
+        JLabel titleLabel = new JLabel("<html><center><h3>Subscribe to:</h3><b>" + result.getTitle() + "</b></center></html>");
+        titleLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        titleLabel.setBorder(new EmptyBorder(0, 0, 15, 0));
+        
+        // List selection
+        JPanel listPanel = ThemeManager.createThemedPanel();
+        listPanel.setLayout(new BorderLayout());
+        
+        JLabel listLabel = new JLabel("Choose a list:");
+        listLabel.setForeground(ThemeManager.getTextPrimaryColor());
+        listLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        
+        // Get user's lists
+        java.util.List<FeedDAO.UserList> userLists = feedDAO.getUserLists(userId);
+        if (userLists.isEmpty()) {
+            // Create default Home list if none exist
+            Optional<FeedDAO.UserList> homeList = feedDAO.createList(userId, "Home");
+            if (homeList.isPresent()) {
+                userLists.add(homeList.get());
+            }
+        }
+        
+        DefaultListModel<FeedDAO.UserList> listModel = new DefaultListModel<>();
+        for (FeedDAO.UserList list : userLists) {
+            listModel.addElement(list);
+        }
+        
+        JList<FeedDAO.UserList> listsList = new JList<>(listModel);
+        listsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listsList.setSelectedIndex(0); // Select first (Home) by default
+        listsList.setBackground(ThemeManager.getCardColor());
+        listsList.setForeground(ThemeManager.getTextPrimaryColor());
+        
+        JScrollPane listsScrollPane = new JScrollPane(listsList);
+        listsScrollPane.setPreferredSize(new Dimension(300, 120));
+        ThemeManager.applyTheme(listsScrollPane);
+        
+        listPanel.add(listLabel, BorderLayout.NORTH);
+        listPanel.add(Box.createVerticalStrut(10), BorderLayout.CENTER);
+        listPanel.add(listsScrollPane, BorderLayout.SOUTH);
+        
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.setOpaque(false);
+        
+        JButton subscribeBtn = ThemeManager.createAccentButton("✅ Subscribe");
+        JButton cancelBtn = ThemeManager.createThemedButton("Cancel");
+        JButton newListBtn = ThemeManager.createThemedButton("+ New List");
+        
+        subscribeBtn.addActionListener(e -> {
+            FeedDAO.UserList selectedList = listsList.getSelectedValue();
+            if (selectedList != null) {
+                listDialog.dispose();
+                performSubscription(result, selectedList, originalButton);
+            }
+        });
+        
+        cancelBtn.addActionListener(e -> listDialog.dispose());
+        
+        newListBtn.addActionListener(e -> {
+            String newListName = JOptionPane.showInputDialog(listDialog, 
+                "Enter new list name:", "Create New List", 
+                JOptionPane.QUESTION_MESSAGE);
+            if (newListName != null && !newListName.trim().isEmpty()) {
+                Optional<FeedDAO.UserList> newList = feedDAO.createList(userId, newListName.trim());
+                if (newList.isPresent()) {
+                    listModel.addElement(newList.get());
+                    listsList.setSelectedValue(newList.get(), true);
+                }
+            }
+        });
+        
+        buttonPanel.add(newListBtn);
+        buttonPanel.add(cancelBtn);
+        buttonPanel.add(subscribeBtn);
+        
+        mainPanel.add(titleLabel, BorderLayout.NORTH);
+        mainPanel.add(listPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        listDialog.add(mainPanel);
+        listDialog.setVisible(true);
+    }
+    
+    private void performSubscription(RSSSearchService.SearchResult result, FeedDAO.UserList selectedList, JButton button) {
         button.setEnabled(false);
         button.setText("Adding...");
 
@@ -606,14 +713,11 @@ public class FeedDiscoveryScreen extends JDialog {
                         logger.info("Created new feed with ID: {}", sourceId);
                     }
 
-                    // Now subscribe the user to this feed (if userId is valid)
-                    if (userId > 0) {
-                        // Get user's default list ID and subscribe
-                        boolean subscribed = feedDAO.subscribeUserToFeed(userId, sourceId);
-                        if (!subscribed) {
-                            logger.warn("Failed to subscribe user {} to feed {}", userId, sourceId);
-                            // Still return true since feed was created
-                        }
+                    // Subscribe to the selected list
+                    boolean subscribed = feedDAO.subscribeToFeedInList(selectedList.getId(), sourceId);
+                    if (!subscribed) {
+                        logger.warn("Failed to subscribe to feed {} in list {}", sourceId, selectedList.getName());
+                        return false;
                     }
 
                     return true;
@@ -631,7 +735,7 @@ public class FeedDiscoveryScreen extends JDialog {
                         button.setText("✅ Subscribed!");
                         button.setBackground(ThemeManager.getCardColor());
                         button.setForeground(ThemeManager.getTextPrimaryColor());
-                        statusLabel.setText("Successfully subscribed to " + result.getTitle());
+                        statusLabel.setText("Successfully subscribed to " + result.getTitle() + " in " + selectedList.getName());
 
                         // Notify parent that a feed was added
                         if (onFeedAdded != null) {
