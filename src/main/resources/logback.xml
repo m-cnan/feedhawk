@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File appender (optional) -->
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/feedhawk.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Set log level for HikariCP to WARN to reduce connection pool debug messages -->
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    
+    <!-- Set log level for PostgreSQL driver to WARN -->
+    <logger name="org.postgresql" level="WARN" />
+    
+    <!-- Set log level for your application to INFO -->
+    <logger name="db" level="INFO" />
+    <logger name="auth" level="INFO" />
+    <logger name="rss" level="INFO" />
+    <logger name="ui" level="INFO" />
+    <logger name="com.feedhawk" level="INFO" />
+
+    <!-- Root logger set to INFO level -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <!-- Uncomment the next line if you want to log to file as well -->
+        <!-- <appender-ref ref="FILE" /> -->
+    </root>
+</configuration>

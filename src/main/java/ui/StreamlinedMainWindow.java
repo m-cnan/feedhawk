@@ -317,6 +317,7 @@ public class StreamlinedMainWindow extends JFrame {
                         }
                     } catch (Exception e) {
                         System.err.println("Error loading feed: " + e.getMessage());
+                        e.printStackTrace();
                     }
                     
                     if (currentArticles.size() >= 50) break;
@@ -392,6 +393,7 @@ public class StreamlinedMainWindow extends JFrame {
             }
         } catch (Exception e) {
             System.err.println("Error loading sample feed: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -629,6 +631,7 @@ public class StreamlinedMainWindow extends JFrame {
                 JOptionPane.showMessageDialog(this, 
                     "Could not open URL: " + ex.getMessage(), 
                     "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
             }
         }
     }

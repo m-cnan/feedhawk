@@ -14,13 +14,6 @@ import java.awt.*;
  */
 public class FeedHawkApp {
     public static void main(String[] args) {
-        // Set system look and feel
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            System.err.println("Could not set look and feel: " + e.getMessage());
-        }
-
         // Start the application on EDT
         SwingUtilities.invokeLater(() -> {
             AuthController authController = AuthController.getInstance();

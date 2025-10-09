@@ -15,6 +15,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -358,6 +359,7 @@ public class FeedDiscoveryScreen extends JDialog {
                 feed.setUrl(curatedFeed.getUrl());
                 feed.setDescription(curatedFeed.getDescription());
                 feed.setCategory(curatedFeed.getCategory());
+                feed.setCreatedAt(LocalDateTime.now());
                 
                 return feedDAO.createSource(feed).isPresent();
             }
@@ -394,6 +396,7 @@ public class FeedDiscoveryScreen extends JDialog {
                     button.setEnabled(true);
                     button.setText("➕ Add to My Feeds");
                     statusLabel.setText("Error adding feed: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         };
@@ -501,6 +504,7 @@ public class FeedDiscoveryScreen extends JDialog {
                     displayLiveSearchResults(results);
                 } catch (Exception e) {
                     statusLabel.setText("Search failed: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         };
@@ -703,6 +707,7 @@ public class FeedDiscoveryScreen extends JDialog {
                         feed.setUrl(result.getUrl());
                         feed.setDescription(result.getDescription());
                         feed.setCategory(result.getCategory());
+                        feed.setCreatedAt(LocalDateTime.now());
 
                         Optional<Feed> createdFeed = feedDAO.createSource(feed);
                         if (!createdFeed.isPresent()) {
