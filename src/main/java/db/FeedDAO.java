@@ -37,7 +37,7 @@ public class FeedDAO {
         "FROM sources WHERE category = ? AND is_active = true ORDER BY name";
 
     private static final String SUBSCRIBE_TO_FEED =
-        "INSERT INTO subscriptions (list_id, source_id) VALUES (?, ?) ON CONFLICT DO NOTHING";
+        "INSERT INTO subscriptions (list_id, source_id) VALUES (?, ?) ON CONFLICT (list_id, source_id) DO NOTHING";
 
     private static final String UNSUBSCRIBE_FROM_FEED =
         "DELETE FROM subscriptions WHERE list_id = ? AND source_id = ?";
@@ -62,7 +62,14 @@ public class FeedDAO {
             stmt.setString(2, feed.getUrl());
             stmt.setString(3, feed.getDescription());
             stmt.setString(4, feed.getCategory());
-            stmt.setTimestamp(5, Timestamp.valueOf(feed.getCreatedAt()));
+            
+            // Handle null createdAt - set to now if null
+            LocalDateTime createdAt = feed.getCreatedAt();
+            if (createdAt == null) {
+                createdAt = LocalDateTime.now();
+                feed.setCreatedAt(createdAt);
+            }
+            stmt.setTimestamp(5, Timestamp.valueOf(createdAt));
 
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -383,6 +390,28 @@ public class FeedDAO {
     }
     
     /**
+     * Check if a user is already subscribed to a specific feed
+     */
+    public boolean isUserSubscribedToFeed(int userId, int sourceId) {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(
+                 "SELECT COUNT(*) FROM subscriptions s JOIN lists l ON s.list_id = l.list_id WHERE l.user_id = ? AND s.source_id = ?")) {
+
+            stmt.setInt(1, userId);
+            stmt.setInt(2, sourceId);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+
+        } catch (SQLException e) {
+            logger.error("Error checking subscription - User: {}, Source: {}", userId, sourceId, e);
+        }
+        return false;
+    }
+
+    /**
      * Subscribe a user to a feed in a specific list
      */
     public boolean subscribeToFeedInList(int listId, int sourceId) {
@@ -394,8 +423,22 @@ public class FeedDAO {
 
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
-                logger.info("Subscribed to feed - List: {}, Source: {}", listId, sourceId);
+                logger.info("Successfully subscribed to feed - List: {}, Source: {}", listId, sourceId);
                 return true;
+            } else {
+                // Check if subscription already exists
+                try (PreparedStatement checkStmt = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM subscriptions WHERE list_id = ? AND source_id = ?")) {
+                    checkStmt.setInt(1, listId);
+                    checkStmt.setInt(2, sourceId);
+                    ResultSet rs = checkStmt.executeQuery();
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        logger.info("Subscription already exists - List: {}, Source: {}", listId, sourceId);
+                        return true; // Already subscribed, that's ok
+                    }
+                }
+                logger.warn("No rows affected when subscribing - List: {}, Source: {}", listId, sourceId);
+                return false;
             }
 
         } catch (SQLException e) {

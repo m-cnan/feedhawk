@@ -2,24 +2,21 @@ package ui;
 
 import db.FeedDAO;
 import db.models.Feed;
-import rss.FeedParser;
 import rss.RSSSearchService;
 import utils.Constants;
 import utils.ThemeManager;
-import utils.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 /**
  * Enhanced Feed Discovery Screen with powerful search capabilities
@@ -293,12 +290,9 @@ public class FeedDiscoveryScreen extends JDialog {
     }
     
     private JPanel createFeedDiscoveryCard(CuratedFeed curatedFeed) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(228, 230, 235), 1),
-            new EmptyBorder(15, 15, 15, 15)
-        ));
-        card.setBackground(Color.WHITE);
+        // Use ThemeManager for proper dark mode card
+        JPanel card = ThemeManager.createThemedCard();
+        card.setLayout(new BorderLayout());
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
         
         // Feed info
@@ -308,14 +302,15 @@ public class FeedDiscoveryScreen extends JDialog {
         
         JLabel nameLabel = new JLabel(curatedFeed.getName());
         nameLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        nameLabel.setForeground(ThemeManager.getTextPrimaryColor()); // Dark theme text
         
         JLabel descLabel = new JLabel("<html>" + curatedFeed.getDescription() + "</html>");
         descLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
-        descLabel.setForeground(Color.GRAY);
+        descLabel.setForeground(ThemeManager.getTextSecondaryColor()); // Dark theme secondary text
         
         JLabel urlLabel = new JLabel(curatedFeed.getUrl());
         urlLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 11));
-        urlLabel.setForeground(new Color(108, 117, 125));
+        urlLabel.setForeground(ThemeManager.getTextSecondaryColor()); // Dark theme secondary text
         
         infoPanel.add(nameLabel);
         infoPanel.add(Box.createVerticalStrut(5));
@@ -323,15 +318,8 @@ public class FeedDiscoveryScreen extends JDialog {
         infoPanel.add(Box.createVerticalStrut(5));
         infoPanel.add(urlLabel);
         
-        // Subscribe button
-        JButton subscribeButton = new JButton("➕ Add to My Feeds");
-        subscribeButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
-        subscribeButton.setBackground(new Color(40, 167, 69));
-        subscribeButton.setForeground(Color.WHITE);
-        subscribeButton.setFocusPainted(false);
-        subscribeButton.setBorder(new EmptyBorder(8, 16, 8, 16));
-        subscribeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
+        // Subscribe button using ThemeManager
+        JButton subscribeButton = ThemeManager.createAccentButton("➕ Subscribe");
         subscribeButton.addActionListener(e -> addFeedToUserList(curatedFeed, subscribeButton));
         
         card.add(infoPanel, BorderLayout.CENTER);
@@ -341,63 +329,22 @@ public class FeedDiscoveryScreen extends JDialog {
     }
     
     private void addFeedToUserList(CuratedFeed curatedFeed, JButton button) {
-        button.setEnabled(false);
-        button.setText("Adding...");
+        if (userId <= 0) {
+            statusLabel.setText("Please log in to subscribe to feeds");
+            return;
+        }
         
-        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
-            @Override
-            protected Boolean doInBackground() throws Exception {
-                // First check if this source already exists
-                if (feedDAO.findSourceByUrl(curatedFeed.getUrl()).isPresent()) {
-                    return true; // Source already exists, just need to subscribe
-                }
-                
-                // Create new source
-                Feed feed = new Feed();
-                feed.setTitle(curatedFeed.getName());
-                feed.setUrl(curatedFeed.getUrl());
-                feed.setDescription(curatedFeed.getDescription());
-                feed.setCategory(curatedFeed.getCategory());
-                
-                return feedDAO.createSource(feed).isPresent();
-            }
-            
-            @Override
-            protected void done() {
-                try {
-                    boolean success = get();
-                    if (success) {
-                        button.setText("✅ Added!");
-                        button.setBackground(new Color(108, 117, 125));
-                        statusLabel.setText("Feed added successfully!");
-                        
-                        // Notify parent that a feed was added
-                        if (onFeedAdded != null) {
-                            onFeedAdded.run();
-                        }
-                        
-                        // Re-enable button after delay
-                        Timer timer = new Timer(2000, evt -> {
-                            button.setEnabled(true);
-                            button.setText("➕ Add to My Feeds");
-                            button.setBackground(new Color(40, 167, 69));
-                        });
-                        timer.setRepeats(false);
-                        timer.start();
-                        
-                    } else {
-                        button.setEnabled(true);
-                        button.setText("➕ Add to My Feeds");
-                        statusLabel.setText("Failed to add feed. Please try again.");
-                    }
-                } catch (Exception e) {
-                    button.setEnabled(true);
-                    button.setText("➕ Add to My Feeds");
-                    statusLabel.setText("Error adding feed: " + e.getMessage());
-                }
-            }
-        };
-        worker.execute();
+        // Convert CuratedFeed to SearchResult format and show the same list selection dialog
+        RSSSearchService.SearchResult searchResult = new RSSSearchService.SearchResult(
+            curatedFeed.getName(),
+            curatedFeed.getUrl(), 
+            curatedFeed.getDescription(),
+            curatedFeed.getCategory(),
+            "curated"
+        );
+        
+        // Use the same subscription flow as live search results
+        showListSelectionDialog(searchResult, button);
     }
     
     private void performSearch() {
@@ -678,6 +625,10 @@ public class FeedDiscoveryScreen extends JDialog {
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         
         listDialog.add(mainPanel);
+        
+        // Apply theme to the entire dialog
+        ThemeManager.applyThemeToWindow(listDialog);
+        
         listDialog.setVisible(true);
     }
     
@@ -703,6 +654,7 @@ public class FeedDiscoveryScreen extends JDialog {
                         feed.setUrl(result.getUrl());
                         feed.setDescription(result.getDescription());
                         feed.setCategory(result.getCategory());
+                        feed.setCreatedAt(LocalDateTime.now());  // CRITICAL: Set createdAt to avoid NullPointerException
 
                         Optional<Feed> createdFeed = feedDAO.createSource(feed);
                         if (!createdFeed.isPresent()) {
@@ -742,12 +694,12 @@ public class FeedDiscoveryScreen extends JDialog {
                             onFeedAdded.run();
                         }
 
-                        // Re-enable button after delay
-                        Timer timer = new Timer(3000, evt -> {
-                            button.setEnabled(true);
-                            button.setText("➕ Subscribe");
-                            button.setBackground(ThemeManager.getAccentColor());
-                            button.setForeground(ThemeManager.isDarkMode() ? Color.BLACK : Color.WHITE);
+                        // Keep button in subscribed state
+                        Timer timer = new Timer(2000, evt -> {
+                            button.setEnabled(false);
+                            button.setText("✅ Subscribed");
+                            button.setBackground(ThemeManager.getCardColor());
+                            button.setForeground(ThemeManager.getTextSecondaryColor());
                         });
                         timer.setRepeats(false);
                         timer.start();
