@@ -33,7 +33,7 @@ public class SignupScreen extends JFrame {
         
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle(Constants.APP_NAME + " - Sign Up");
-        setSize(550, 550);
+        setSize(550, 800);
         setLocationRelativeTo(null);
         setResizable(false);
     }
