@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.time.LocalDateTime;
 
 /**
  * Enhanced Feed Discovery Screen with powerful search capabilities
@@ -448,6 +448,7 @@ public class FeedDiscoveryScreen extends JDialog {
                     displayLiveSearchResults(results);
                 } catch (Exception e) {
                     statusLabel.setText("Search failed: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         };

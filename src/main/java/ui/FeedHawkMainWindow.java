@@ -62,6 +62,7 @@ public class FeedHawkMainWindow extends JFrame {
             SwingUtilities.updateComponentTreeUI(this);
         } catch (Exception e) {
             System.err.println("Could not set look and feel: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -271,6 +272,7 @@ public class FeedHawkMainWindow extends JFrame {
             }
         } catch (Exception e) {
             System.err.println("Error loading feed " + feedUrl + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -489,6 +491,7 @@ public class FeedHawkMainWindow extends JFrame {
                 JOptionPane.showMessageDialog(this,
                     "Could not open URL: " + ex.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
             }
         } else {
             JOptionPane.showMessageDialog(this,
@@ -607,6 +610,7 @@ public class FeedHawkMainWindow extends JFrame {
                     JOptionPane.showMessageDialog(FeedHawkMainWindow.this,
                         "Error adding feed: " + e.getMessage(),
                         "Error", JOptionPane.ERROR_MESSAGE);
+                    e.printStackTrace();
                 }
             }
         };

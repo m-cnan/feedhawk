@@ -204,6 +204,7 @@ public class LoginScreen extends JFrame {
                     }
                 } catch (Exception e) {
                     showError("Login failed: " + e.getMessage());
+                    e.printStackTrace();
                 } finally {
                     loginButton.setEnabled(true);
                     loginButton.setText("Login");
