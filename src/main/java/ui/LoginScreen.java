@@ -9,8 +9,7 @@ import utils.ThemeManager;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 
 public class LoginScreen extends JFrame {
     private final AuthController authController;
@@ -33,9 +32,9 @@ public class LoginScreen extends JFrame {
         
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle(Constants.APP_NAME + " - Login");
-        setSize(500, 400);
+        setSize(500, 500); // Increased height from 400 to 500
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true); // Made resizable so users can adjust if needed
     }
 
     private void initializeComponents() {
@@ -90,11 +89,11 @@ public class LoginScreen extends JFrame {
 
         // Main panel with dark theme
         JPanel mainPanel = ThemeManager.createThemedPanel();
-        mainPanel.setBorder(new EmptyBorder(20, 50, 30, 50));
+        mainPanel.setBorder(new EmptyBorder(15, 50, 20, 50)); // Reduced top padding
         mainPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(8, 0, 8, 0);
+        gbc.insets = new Insets(6, 0, 6, 0); // Reduced vertical spacing
 
         // Username label and field
         gbc.gridx = 0; gbc.gridy = 0;
@@ -128,7 +127,7 @@ public class LoginScreen extends JFrame {
         // Status label
         gbc.gridy = 5;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(15, 0, 15, 0);
+        gbc.insets = new Insets(10, 0, 10, 0); // Reduced spacing
         mainPanel.add(statusLabel, gbc);
 
         // Login button
@@ -136,36 +135,51 @@ public class LoginScreen extends JFrame {
         gbc.insets = new Insets(5, 0, 5, 0);
         mainPanel.add(loginButton, gbc);
 
-        // Signup button
+        // Signup button with different styling to make it more visible
         gbc.gridy = 7;
+        gbc.insets = new Insets(10, 0, 10, 0); // Added more spacing for signup button
+        signupButton.setPreferredSize(new Dimension(200, 35)); // Ensure minimum size
         mainPanel.add(signupButton, gbc);
 
         add(headerPanel, BorderLayout.NORTH);
         add(mainPanel, BorderLayout.CENTER);
+        
+        // Add a bottom spacer panel to ensure signup button is visible
+        JPanel bottomPanel = ThemeManager.createThemedPanel();
+        bottomPanel.setPreferredSize(new Dimension(500, 20));
+        add(bottomPanel, BorderLayout.SOUTH);
     }
 
     private void setupEventListeners() {
-        loginButton.addActionListener(new ActionListener() {
+        // Add debug logging for button clicks
+        loginButton.addActionListener(e -> {
+            System.out.println("DEBUG: Login button clicked!");
+            performLogin();
+        });
+        
+        signupButton.addActionListener(e -> {
+            System.out.println("DEBUG: Signup button clicked!");
+            openSignupScreen();
+        });
+        
+        // Make buttons more responsive
+        loginButton.addMouseListener(new MouseAdapter() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                performLogin();
+            public void mousePressed(MouseEvent e) {
+                System.out.println("DEBUG: Login button mouse pressed!");
             }
         });
-
-        signupButton.addActionListener(new ActionListener() {
+        
+        signupButton.addMouseListener(new MouseAdapter() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                openSignupScreen();
+            public void mousePressed(MouseEvent e) {
+                System.out.println("DEBUG: Signup button mouse pressed!");
             }
         });
-
-        // Enter key support
-        passwordField.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                performLogin();
-            }
-        });
+        
+        // Add Enter key support
+        usernameField.addActionListener(e -> passwordField.requestFocus());
+        passwordField.addActionListener(e -> performLogin());
     }
 
     private void performLogin() {

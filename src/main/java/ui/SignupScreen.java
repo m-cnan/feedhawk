@@ -160,8 +160,24 @@ public class SignupScreen extends JFrame {
     }
 
     private void setupEventListeners() {
-        signupButton.addActionListener(e -> performSignup());
-        backToLoginButton.addActionListener(e -> backToLogin());
+        // Add debug logging for button clicks
+        signupButton.addActionListener(e -> {
+            System.out.println("DEBUG: Signup button clicked!");
+            performSignup();
+        });
+        
+        backToLoginButton.addActionListener(e -> {
+            System.out.println("DEBUG: Back to login button clicked!");
+            backToLogin();
+        });
+        
+        // Make buttons more responsive
+        signupButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                System.out.println("DEBUG: Signup button mouse pressed!");
+            }
+        });
         
         passwordField.addKeyListener(new KeyAdapter() {
             public void keyReleased(KeyEvent e) {
@@ -170,6 +186,11 @@ public class SignupScreen extends JFrame {
         });
         
         confirmPasswordField.addActionListener(e -> performSignup());
+        
+        // Add Enter key support for all fields
+        usernameField.addActionListener(e -> emailField.requestFocus());
+        emailField.addActionListener(e -> passwordField.requestFocus());
+        passwordField.addActionListener(e -> confirmPasswordField.requestFocus());
     }
 
     private void updatePasswordStrength() {
@@ -198,11 +219,18 @@ public class SignupScreen extends JFrame {
     }
 
     private void performSignup() {
+        System.out.println("DEBUG: performSignup() called");
+        
         String username = usernameField.getText().trim();
         String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
         String confirmPassword = new String(confirmPasswordField.getPassword());
 
+        System.out.println("DEBUG: Username: " + username);
+        System.out.println("DEBUG: Email: " + email);
+        System.out.println("DEBUG: Password length: " + password.length());
+
+        // Client-side validation first
         if (username.isEmpty()) {
             showError("Please enter a username");
             usernameField.requestFocus();
@@ -227,19 +255,51 @@ public class SignupScreen extends JFrame {
             return;
         }
 
+        if (!password.equals(confirmPassword)) {
+            showError("Passwords do not match");
+            confirmPasswordField.requestFocus();
+            return;
+        }
+
+        // Basic email validation
+        if (!email.contains("@") || !email.contains(".")) {
+            showError("Please enter a valid email address");
+            emailField.requestFocus();
+            return;
+        }
+
+        if (password.length() < 6) {
+            showError("Password must be at least 6 characters long");
+            passwordField.requestFocus();
+            return;
+        }
+
         signupButton.setEnabled(false);
         signupButton.setText("Creating...");
         statusLabel.setText("Creating your account...");
         statusLabel.setForeground(ThemeManager.getTextSecondaryColor());
 
+        System.out.println("DEBUG: Starting signup process...");
+
         SwingWorker<AuthResult, Void> worker = new SwingWorker<AuthResult, Void>() {
             protected AuthResult doInBackground() throws Exception {
-                return authController.registerUser(username, email, password, confirmPassword);
+                System.out.println("DEBUG: In background thread, calling authController...");
+                try {
+                    AuthResult result = authController.registerUser(username, email, password, confirmPassword);
+                    System.out.println("DEBUG: AuthController returned: " + result.getMessage());
+                    return result;
+                } catch (Exception e) {
+                    System.out.println("DEBUG: Exception in authController: " + e.getMessage());
+                    e.printStackTrace();
+                    throw e;
+                }
             }
 
             protected void done() {
                 try {
                     AuthResult result = get();
+                    System.out.println("DEBUG: Final result: " + result.isSuccess() + " - " + result.getMessage());
+                    
                     if (result.isSuccess()) {
                         showSuccess("Account created successfully! Please log in.");
                         Timer timer = new Timer(2000, e -> backToLogin());
@@ -249,7 +309,15 @@ public class SignupScreen extends JFrame {
                         showError(result.getMessage());
                     }
                 } catch (Exception e) {
-                    showError("Signup failed: " + e.getMessage());
+                    System.out.println("DEBUG: Exception in done(): " + e.getMessage());
+                    e.printStackTrace();
+                    
+                    // For now, if database is not available, show a helpful message
+                    if (e.getMessage().contains("Connection") || e.getMessage().contains("database")) {
+                        showError("Database not available. Please set up PostgreSQL first.");
+                    } else {
+                        showError("Signup failed: " + e.getMessage());
+                    }
                 } finally {
                     signupButton.setEnabled(true);
                     signupButton.setText("✨ Create Account");
