@@ -13,7 +13,7 @@ public class DBConnection {
     private static HikariDataSource dataSource;
 
     // Database configuration
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/feedhawk_db";
+    private static final String DB_URL = "jdbc:postgresql://localhost:5432/feedhawk";
     private static final String DB_USERNAME = "feedhawk_user";
     private static final String DB_PASSWORD = "feedhawk_password";
 
