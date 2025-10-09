@@ -9,7 +9,6 @@ import utils.ThemeManager;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.*;
 
 public class LoginScreen extends JFrame {
     private final AuthController authController;
@@ -151,31 +150,9 @@ public class LoginScreen extends JFrame {
     }
 
     private void setupEventListeners() {
-        // Add debug logging for button clicks
-        loginButton.addActionListener(e -> {
-            System.out.println("DEBUG: Login button clicked!");
-            performLogin();
-        });
-        
-        signupButton.addActionListener(e -> {
-            System.out.println("DEBUG: Signup button clicked!");
-            openSignupScreen();
-        });
-        
-        // Make buttons more responsive
-        loginButton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                System.out.println("DEBUG: Login button mouse pressed!");
-            }
-        });
-        
-        signupButton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                System.out.println("DEBUG: Signup button mouse pressed!");
-            }
-        });
+        // Set up button action listeners
+        loginButton.addActionListener(e -> performLogin());
+        signupButton.addActionListener(e -> openSignupScreen());
         
         // Add Enter key support
         usernameField.addActionListener(e -> passwordField.requestFocus());

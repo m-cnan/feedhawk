@@ -148,7 +148,7 @@ public class ThemeManager {
     }
     
     /**
-     * Style a button properly with dark mode
+     * Style a button properly with dark mode - FIXED FOR CLICKABILITY
      */
     private static void styleButton(JButton button) {
         button.setBackground(cardColor);
@@ -158,28 +158,42 @@ public class ThemeManager {
             BorderFactory.createEmptyBorder(10, 16, 10, 16)
         ));
         button.setFocusPainted(false);
+        button.setFocusable(true);  // CRITICAL: Make button focusable
+        button.setEnabled(true);    // CRITICAL: Ensure button is enabled
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
 
-        // Remove all existing mouse listeners to avoid conflicts
+        // DON'T remove existing mouse listeners - they might be needed for ActionListeners
+        // Instead, add hover effects that don't interfere with button functionality
+        
+        // Only add hover effect if button doesn't already have mouse listeners for it
+        boolean hasHoverEffect = false;
         for (java.awt.event.MouseListener ml : button.getMouseListeners()) {
-            button.removeMouseListener(ml);
+            if (ml.getClass().getName().contains("ThemeManager")) {
+                hasHoverEffect = true;
+                break;
+            }
         }
-
-        // Add proper hover effects
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(accentColor);
-                button.setForeground(isDarkMode ? Color.BLACK : Color.WHITE);
-            }
-            
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(cardColor);
-                button.setForeground(textPrimaryColor);
-            }
-        });
+        
+        if (!hasHoverEffect) {
+            button.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseEntered(java.awt.event.MouseEvent evt) {
+                    if (button.isEnabled()) {
+                        button.setBackground(accentColor);
+                        button.setForeground(isDarkMode ? Color.BLACK : Color.WHITE);
+                    }
+                }
+                
+                @Override
+                public void mouseExited(java.awt.event.MouseEvent evt) {
+                    if (button.isEnabled()) {
+                        button.setBackground(cardColor);
+                        button.setForeground(textPrimaryColor);
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -192,7 +206,7 @@ public class ThemeManager {
     }
     
     /**
-     * Create an accent button with orange color
+     * Create an accent button with orange color - FIXED FOR CLICKABILITY
      */
     public static JButton createAccentButton(String text) {
         JButton button = new JButton(text);
@@ -200,6 +214,8 @@ public class ThemeManager {
         button.setForeground(isDarkMode ? Color.BLACK : Color.WHITE);
         button.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
         button.setFocusPainted(false);
+        button.setFocusable(true);  // CRITICAL: Make button focusable
+        button.setEnabled(true);    // CRITICAL: Ensure button is enabled
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
 
@@ -207,12 +223,16 @@ public class ThemeManager {
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(accentColor.brighter());
+                if (button.isEnabled()) {
+                    button.setBackground(accentColor.brighter());
+                }
             }
 
             @Override
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(accentColor);
+                if (button.isEnabled()) {
+                    button.setBackground(accentColor);
+                }
             }
         });
 
