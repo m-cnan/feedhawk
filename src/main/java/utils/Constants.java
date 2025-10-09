@@ -9,7 +9,7 @@ public class Constants {
     public static final String USER_AGENT = APP_NAME + " RSS Reader " + APP_VERSION;
 
     // Database Configuration
-    public static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/feedhawk_db";
+    public static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/feedhawk";
     public static final String DEFAULT_DB_USERNAME = "feedhawk_user";
     public static final String DEFAULT_DB_PASSWORD = "feedhawk_password";
 

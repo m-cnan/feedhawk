@@ -350,6 +350,9 @@ public class FeedDAO {
                     list.setCreatedAt(createdAt.toLocalDateTime());
                 }
                 
+                // Get subscription count for this list
+                list.setSubscriptionCount(getSubscriptionCount(list.getId()));
+                
                 lists.add(list);
             }
             
@@ -378,6 +381,7 @@ public class FeedDAO {
                 list.setName(listName);
                 list.setDefault(false);
                 list.setCreatedAt(LocalDateTime.now());
+                list.setSubscriptionCount(0); // New list starts with 0 subscriptions
                 
                 logger.info("Created new list '{}' for user {}", listName, userId);
                 return Optional.of(list);
@@ -446,7 +450,30 @@ public class FeedDAO {
         }
         return false;
     }
-    
+
+    /**
+     * Get the count of subscriptions for a specific list
+     */
+    public int getSubscriptionCount(int listId) {
+        String query = "SELECT COUNT(*) FROM subscriptions WHERE list_id = ?";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, listId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Error counting subscriptions for list: {}", listId, e);
+        }
+        
+        return 0;
+    }
+
     /**
      * Simple UserList model class
      */
@@ -456,6 +483,7 @@ public class FeedDAO {
         private String name;
         private boolean isDefault;
         private LocalDateTime createdAt;
+        private int subscriptionCount = 0;
         
         // Getters and setters
         public int getId() { return id; }
@@ -473,9 +501,14 @@ public class FeedDAO {
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         
+        public int getSubscriptionCount() { return subscriptionCount; }
+        public void setSubscriptionCount(int subscriptionCount) { this.subscriptionCount = subscriptionCount; }
+        
         @Override
         public String toString() {
-            return (isDefault ? "🏠 " : "📁 ") + name;
+            String icon = isDefault ? "🏠 " : "📁 ";
+            String countText = subscriptionCount > 0 ? " (" + subscriptionCount + ")" : " (0)";
+            return icon + name + countText;
         }
     }
 }

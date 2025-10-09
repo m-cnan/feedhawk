@@ -881,6 +881,13 @@ public class StreamlinedMainWindow extends JFrame {
         feedScrollPane.getViewport().setBackground(ThemeManager.getBackgroundColor());
     }
     
+    /**
+     * Public method to refresh user lists - call this when subscriptions change
+     */
+    public void refreshUserLists() {
+        SwingUtilities.invokeLater(() -> loadUserLists());
+    }
+    
     private void loadUserLists() {
         userListsModel.clear();
         
