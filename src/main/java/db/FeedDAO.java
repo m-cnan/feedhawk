@@ -475,6 +475,80 @@ public class FeedDAO {
     }
 
     /**
+     * Mark an article as read or unread for a specific user
+     */
+    public boolean markArticleAsRead(int userId, int feedId, boolean isRead) {
+        String query = "INSERT INTO read_status (user_id, feed_id, is_read, marked_read_at) " +
+                      "VALUES (?, ?, ?, NOW()) " +
+                      "ON CONFLICT (user_id, feed_id) " +
+                      "DO UPDATE SET is_read = EXCLUDED.is_read, marked_read_at = NOW()";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, userId);
+            stmt.setInt(2, feedId);
+            stmt.setBoolean(3, isRead);
+            
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                logger.debug("Article {} marked as {} for user {}", feedId, isRead ? "read" : "unread", userId);
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            logger.error("Error marking article {} as {} for user {}", feedId, isRead ? "read" : "unread", userId, e);
+        }
+        return false;
+    }
+    
+    /**
+     * Mark an article as saved/bookmarked or unsaved for a specific user
+     */
+    public boolean markArticleAsSaved(int userId, int feedId, boolean isSaved) {
+        if (isSaved) {
+            // Add bookmark
+            String query = "INSERT INTO user_bookmarks (user_id, feed_id, created_at) " +
+                          "VALUES (?, ?, NOW()) " +
+                          "ON CONFLICT (user_id, feed_id) DO NOTHING";
+            
+            try (Connection conn = DBConnection.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+                
+                stmt.setInt(1, userId);
+                stmt.setInt(2, feedId);
+                
+                int rowsAffected = stmt.executeUpdate();
+                logger.debug("Article {} saved for user {}", feedId, userId);
+                return true;
+                
+            } catch (SQLException e) {
+                logger.error("Error saving article {} for user {}", feedId, userId, e);
+            }
+        } else {
+            // Remove bookmark
+            String query = "DELETE FROM user_bookmarks WHERE user_id = ? AND feed_id = ?";
+            
+            try (Connection conn = DBConnection.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(query)) {
+                
+                stmt.setInt(1, userId);
+                stmt.setInt(2, feedId);
+                
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    logger.debug("Article {} unsaved for user {}", feedId, userId);
+                    return true;
+                }
+                
+            } catch (SQLException e) {
+                logger.error("Error unsaving article {} for user {}", feedId, userId, e);
+            }
+        }
+        return false;
+    }
+
+    /**
      * Simple UserList model class
      */
     public static class UserList {
