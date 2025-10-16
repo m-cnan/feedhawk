@@ -1,10 +1,12 @@
 package ui;
 
 import auth.AuthController;
+import db.FeedDAO;
 import db.models.User;
 import db.models.Article;
 import db.models.Feed;
 import rss.FeedParser;
+import ui.components.ArticleDialog;
 import utils.Constants;
 import utils.Validator;
 
@@ -20,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 public class FeedHawkMainWindow extends JFrame {
     private final AuthController authController;
     private final FeedParser feedParser;
+    private final FeedDAO feedDAO;
 
     private JPanel mainPanel;
     private JPanel feedPanel;
@@ -43,6 +46,7 @@ public class FeedHawkMainWindow extends JFrame {
     public FeedHawkMainWindow() {
         this.authController = AuthController.getInstance();
         this.feedParser = new FeedParser();
+        this.feedDAO = new FeedDAO();
         this.currentUser = authController.getCurrentUser();
         this.currentArticles = new ArrayList<>();
 
@@ -429,11 +433,11 @@ public class FeedHawkMainWindow extends JFrame {
         styleActionButton(readLaterButton);
         styleActionButton(openButton);
         
-        // Button actions
-        readButton.addActionListener(e -> toggleArticleRead(article, readButton));
-        bookmarkButton.addActionListener(e -> toggleArticleBookmark(article, bookmarkButton));
-        readLaterButton.addActionListener(e -> toggleArticleReadLater(article, readLaterButton));
-        openButton.addActionListener(e -> openArticleInBrowser(article));
+    // Button actions
+    readButton.addActionListener(e -> toggleArticleRead(article, readButton));
+    bookmarkButton.addActionListener(e -> toggleArticleBookmark(article, bookmarkButton));
+    readLaterButton.addActionListener(e -> toggleArticleReadLater(article, readLaterButton));
+    openButton.addActionListener(e -> showArticleDetailsDialog(article));
 
         actionPanel.add(readButton);
         actionPanel.add(Box.createHorizontalStrut(5));
@@ -446,6 +450,11 @@ public class FeedHawkMainWindow extends JFrame {
         return actionPanel;
     }
     
+    private void showArticleDetailsDialog(Article article) {
+        ArticleDialog dialog = new ArticleDialog(this, article);
+        dialog.setVisible(true);
+    }
+
     private void styleActionButton(JButton button) {
         button.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         button.setFocusPainted(false);
@@ -464,39 +473,43 @@ public class FeedHawkMainWindow extends JFrame {
     }
     
     private void toggleArticleRead(Article article, JButton button) {
-        article.setRead(!article.isRead());
+        boolean newReadStatus = !article.isRead();
+        article.setRead(newReadStatus);
         button.setText(article.isRead() ? "✅ Read" : "📖 Mark Read");
 
         // Update card background
         JPanel card = (JPanel) button.getParent().getParent().getParent();
         card.setBackground(article.isRead() ? new Color(249, 249, 249) : Color.WHITE);
         card.repaint();
+
+        System.out.println("Article '" + article.getTitle() + "' marked as " + (newReadStatus ? "read" : "unread"));
+        System.out.println("Current user: " + (currentUser != null ? currentUser.getUsername() : "Guest"));
+        
+        // Save to database
+        if (currentUser != null && article.getId() > 0) {
+            feedDAO.markArticleAsRead(currentUser.getId(), article.getId(), newReadStatus);
+        }
     }
 
     private void toggleArticleBookmark(Article article, JButton button) {
-        article.setBookmarked(!article.isBookmarked());
+        boolean newBookmarkStatus = !article.isBookmarked();
+        article.setBookmarked(newBookmarkStatus);
         button.setText(article.isBookmarked() ? "🔖 Bookmarked" : "🔖 Bookmark");
+        
+        // Save to database
+        if (currentUser != null && article.getId() > 0) {
+            feedDAO.markArticleAsSaved(currentUser.getId(), article.getId(), newBookmarkStatus);
+        }
     }
 
     private void toggleArticleReadLater(Article article, JButton button) {
-        article.setReadLater(!article.isReadLater());
+        boolean newSavedStatus = !article.isReadLater();
+        article.setReadLater(newSavedStatus);
         button.setText(article.isReadLater() ? "📚 Saved" : "📚 Read Later");
-    }
-
-    private void openArticleInBrowser(Article article) {
-        if (article.getUrl() != null && !article.getUrl().isEmpty()) {
-            try {
-                Desktop.getDesktop().browse(java.net.URI.create(article.getUrl()));
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this,
-                    "Could not open URL: " + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,
-                "No URL available for this article",
-                "Information", JOptionPane.INFORMATION_MESSAGE);
+        
+        // Save to database
+        if (currentUser != null && article.getId() > 0) {
+            feedDAO.markArticleAsSaved(currentUser.getId(), article.getId(), newSavedStatus);
         }
     }
 

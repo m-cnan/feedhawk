@@ -7,6 +7,7 @@ import db.models.Feed;
 import db.FeedDAO;
 import rss.FeedParser;
 import rss.RSSSearchService;
+import ui.components.ArticleDialog;
 import utils.Constants;
 import utils.ThemeManager;
 
@@ -562,7 +563,7 @@ public class StreamlinedMainWindow extends JFrame {
         readButton.addActionListener(e -> toggleArticleRead(article, readButton));
         saveButton.addActionListener(e -> toggleArticleSave(article, saveButton));
         summarizeButton.addActionListener(e -> showAISummary(article));
-        openButton.addActionListener(e -> openArticleInBrowser(article));
+    openButton.addActionListener(e -> showArticleDetailsDialog(article));
         
         actionPanel.add(readButton);
         actionPanel.add(Box.createHorizontalStrut(8));
@@ -574,7 +575,12 @@ public class StreamlinedMainWindow extends JFrame {
         
         return actionPanel;
     }
-    
+
+    private void showArticleDetailsDialog(Article article) {
+        ArticleDialog dialog = new ArticleDialog(this, article);
+        dialog.setVisible(true);
+    }
+
     private void styleActionButton(JButton button) {
         button.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         button.setFocusPainted(false);
@@ -593,7 +599,8 @@ public class StreamlinedMainWindow extends JFrame {
     }
     
     private void toggleArticleRead(Article article, JButton button) {
-        article.setRead(!article.isRead());
+        boolean newReadStatus = !article.isRead();
+        article.setRead(newReadStatus);
         button.setText(article.isRead() ? "✅ Read" : "📖 Mark Read");
         
         JPanel card = findParentCard(button);
@@ -601,14 +608,30 @@ public class StreamlinedMainWindow extends JFrame {
             card.setBackground(article.isRead() ? new Color(249, 249, 249) : Color.WHITE);
             card.repaint();
         }
+
+        System.out.println("Article '" + article.getTitle() + "' marked as " + (newReadStatus ? "read" : "unread"));
+        System.out.println("Current user: " + (currentUser != null ? currentUser.getUsername() : "Guest"));
+        System.out.println("Article ID: " + article.getId());
+
+        // Save to database
+        if (currentUser != null && article.getId() > 0) {
+            System.out.println("Saving read status to DB for user " + currentUser.getUsername());
+            feedDAO.markArticleAsRead(currentUser.getId(), article.getId(), newReadStatus);
+        }
     }
     
     private void toggleArticleSave(Article article, JButton button) {
-        article.setSaved(!article.isSaved());
+        boolean newSavedStatus = !article.isSaved();
+        article.setSaved(newSavedStatus);
         button.setText(article.isSaved() ? "💾 Saved" : "💾 Save");
         
         if (selectedList.equals(Constants.DEFAULT_LIST_SAVED) && !article.isSaved()) {
             loadArticlesForList(selectedList);
+        }
+        
+        // Save to database
+        if (currentUser != null && article.getId() > 0) {
+            feedDAO.markArticleAsSaved(currentUser.getId(), article.getId(), newSavedStatus);
         }
     }
     
@@ -617,23 +640,6 @@ public class StreamlinedMainWindow extends JFrame {
             "🤖 AI Summary coming soon!\n\nThis will provide intelligent summaries using AI APIs.", 
             "AI Summary", 
             JOptionPane.INFORMATION_MESSAGE);
-    }
-    
-    private void openArticleInBrowser(Article article) {
-        if (article.getUrl() != null && !article.getUrl().isEmpty()) {
-            try {
-                Desktop.getDesktop().browse(java.net.URI.create(article.getUrl()));
-                if (!article.isRead()) {
-                    article.setRead(true);
-                    loadArticlesForList(selectedList);
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Could not open URL: " + ex.getMessage(), 
-                    "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
-            }
-        }
     }
     
     private JPanel findParentCard(JComponent component) {
